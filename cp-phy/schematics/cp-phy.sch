@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Sun 09 Jun 2013 10:42:15 PM CEST
+EESchema Schematic File Version 2  date Mon 10 Jun 2013 11:12:27 AM CEST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -31,7 +31,6 @@ LIBS:contrib
 LIBS:valves
 LIBS:raspberrypi
 LIBS:rs485-rs232
-LIBS:crystalosc
 LIBS:cp-phy-cache
 EELAYER 25  0
 EELAYER END

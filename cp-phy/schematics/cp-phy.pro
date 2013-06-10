@@ -1,4 +1,4 @@
-update=Sun 02 Jun 2013 09:55:17 PM CEST
+update=Mon 10 Jun 2013 11:12:25 AM CEST
 version=1
 last_client=eeschema
 [cvpcb]
@@ -102,4 +102,3 @@ LibName29=contrib
 LibName30=valves
 LibName31=raspberrypi
 LibName32=rs485-rs232
-LibName33=crystalosc
