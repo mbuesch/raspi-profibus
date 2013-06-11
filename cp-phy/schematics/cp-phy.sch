@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Mon 10 Jun 2013 11:12:27 AM CEST
+EESchema Schematic File Version 2  date Wed 12 Jun 2013 12:08:52 AM CEST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -38,7 +38,7 @@ $Descr A4 11700 8267
 encoding utf-8
 Sheet 1 1
 Title "Raspberry Pi / Profibus DP / CP-PHY"
-Date "9 jun 2013"
+Date "11 jun 2013"
 Rev "1.0"
 Comp "Michael Buesch <m@bues.ch>"
 Comment1 ""
@@ -47,9 +47,33 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 Wire Wire Line
+	7650 1450 6950 1450
+Wire Wire Line
+	6950 1350 6950 1450
+Wire Wire Line
+	5900 1350 6950 1350
+Wire Wire Line
+	5900 2450 6200 2450
+Wire Wire Line
+	5900 2050 6200 2050
+Wire Wire Line
+	5900 1550 6200 1550
+Wire Wire Line
+	6700 2450 6950 2450
+Wire Wire Line
+	6950 2450 6950 2700
+Wire Wire Line
+	6950 2700 9350 2700
+Wire Wire Line
+	7650 1950 6750 1950
+Wire Wire Line
+	6750 1950 6750 2050
+Wire Wire Line
+	6750 2050 6700 2050
+Wire Wire Line
 	4000 5150 3600 5150
 Wire Wire Line
-	4650 5150 4500 5150
+	4550 5150 4400 5150
 Connection ~ 10400 1950
 Wire Wire Line
 	10400 1950 10400 2050
@@ -112,19 +136,11 @@ Wire Wire Line
 Wire Wire Line
 	7550 950  7650 950 
 Wire Wire Line
-	7000 1550 7650 1550
-Wire Wire Line
 	3600 2950 3900 2950
 Wire Wire Line
 	3900 1900 2000 1900
 Wire Wire Line
 	3100 1450 3900 1450
-Wire Bus Line
-	6900 2050 6900 1100
-Wire Wire Line
-	7000 1950 7650 1950
-Wire Bus Line
-	6900 1100 4000 1100
 Wire Wire Line
 	3600 3250 3900 3250
 Wire Wire Line
@@ -185,17 +201,7 @@ Wire Wire Line
 Wire Wire Line
 	3900 3350 3600 3350
 Wire Wire Line
-	7650 1850 7000 1850
-Wire Wire Line
-	7000 2050 7650 2050
-Wire Wire Line
-	7000 2150 7250 2150
-Wire Wire Line
-	7250 2150 7250 2700
-Wire Wire Line
-	7250 2700 9350 2700
-Wire Wire Line
-	9350 2700 9350 2050
+	9350 2050 9350 2700
 Wire Wire Line
 	2300 1450 2100 1450
 Wire Wire Line
@@ -212,8 +218,6 @@ Wire Wire Line
 	2200 1550 2200 1700
 Wire Wire Line
 	2200 1700 3900 1700
-Wire Wire Line
-	7650 1450 7000 1450
 Wire Wire Line
 	7550 1350 7650 1350
 Wire Wire Line
@@ -272,24 +276,87 @@ Wire Wire Line
 	10650 1950 10650 1850
 Wire Wire Line
 	5050 5150 5200 5150
+Wire Wire Line
+	6700 1550 7650 1550
+Wire Wire Line
+	6700 1850 7650 1850
+Wire Wire Line
+	7650 2050 6850 2050
+Wire Wire Line
+	6850 2050 6850 2250
+Wire Wire Line
+	6850 2250 6700 2250
+Wire Wire Line
+	5900 1850 6200 1850
+Wire Wire Line
+	5900 2250 6200 2250
+Wire Bus Line
+	5800 2350 5800 1100
+Wire Bus Line
+	5800 1100 4000 1100
+$Comp
+L R R5
+U 1 1 51B79CC0
+P 6450 2450
+F 0 "R5" V 6530 2450 50  0000 C CNN
+F 1 "4.7k" V 6450 2450 50  0000 C CNN
+	1    6450 2450
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R R4
+U 1 1 51B64288
+P 6450 2250
+F 0 "R4" V 6530 2250 50  0000 C CNN
+F 1 "4.7k" V 6450 2250 50  0000 C CNN
+	1    6450 2250
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R R3
+U 1 1 51B5F813
+P 6450 2050
+F 0 "R3" V 6530 2050 50  0000 C CNN
+F 1 "4.7k" V 6450 2050 50  0000 C CNN
+	1    6450 2050
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R R2
+U 1 1 51B5F80F
+P 6450 1850
+F 0 "R2" V 6530 1850 50  0000 C CNN
+F 1 "4.7k" V 6450 1850 50  0000 C CNN
+	1    6450 1850
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R R1
+U 1 1 51B5F807
+P 6450 1550
+F 0 "R1" V 6530 1550 50  0000 C CNN
+F 1 "4.7k" V 6450 1550 50  0000 C CNN
+	1    6450 1550
+	0    -1   -1   0   
+$EndComp
 Text GLabel 5200 5150 2    60   Input ~ 0
 GND
 $Comp
 L LED D1
 U 1 1 51B4E393
-P 4850 5150
-F 0 "D1" H 4850 5250 50  0000 C CNN
-F 1 "LED" H 4850 5050 50  0000 C CNN
-	1    4850 5150
+P 4200 5150
+F 0 "D1" H 4200 5250 50  0000 C CNN
+F 1 "LED" H 4200 5050 50  0000 C CNN
+	1    4200 5150
 	1    0    0    -1  
 $EndComp
 $Comp
-L R R2
+L R R7
 U 1 1 51B4E38D
-P 4250 5150
-F 0 "R2" V 4330 5150 50  0000 C CNN
-F 1 "100" V 4250 5150 50  0000 C CNN
-	1    4250 5150
+P 4800 5150
+F 0 "R7" V 4880 5150 50  0000 C CNN
+F 1 "100" V 4800 5150 50  0000 C CNN
+	1    4800 5150
 	0    -1   -1   0   
 $EndComp
 Text GLabel 10400 2050 3    60   Input ~ 0
@@ -429,14 +496,14 @@ Entry Wire Line
 	4150 4750 4250 4850
 Entry Wire Line
 	4050 4750 4150 4850
-Text Label 7050 1450 0    40   ~ 0
+Text Label 5950 1350 0    40   ~ 0
 RESET
-Text Label 7050 1550 0    40   ~ 0
+Text Label 5950 1550 0    40   ~ 0
 IRQ
 Entry Wire Line
-	6900 1350 7000 1450
+	5800 1250 5900 1350
 Entry Wire Line
-	6900 1450 7000 1550
+	5800 1450 5900 1550
 Text Label 3900 4300 2    40   ~ 0
 RESET
 Entry Wire Line
@@ -461,22 +528,22 @@ Text Label 3850 1450 2    40   ~ 0
 MOSI
 Entry Wire Line
 	3900 1450 4000 1550
-Text Label 7050 2150 0    40   ~ 0
+Text Label 5950 2450 0    40   ~ 0
 SS
 Entry Wire Line
-	6900 2050 7000 2150
-Text Label 7050 2050 0    40   ~ 0
+	5800 2350 5900 2450
+Text Label 5950 2250 0    40   ~ 0
 SCK
 Entry Wire Line
-	6900 1950 7000 2050
-Text Label 7050 1950 0    40   ~ 0
+	5800 2150 5900 2250
+Text Label 5950 2050 0    40   ~ 0
 MISO
 Entry Wire Line
-	6900 1850 7000 1950
-Text Label 7050 1850 0    40   ~ 0
+	5800 1950 5900 2050
+Text Label 5950 1850 0    40   ~ 0
 MOSI
 Entry Wire Line
-	6900 1750 7000 1850
+	5800 1750 5900 1850
 Text Label 3850 3350 2    40   ~ 0
 SCK
 Text Label 3850 3250 2    40   ~ 0
@@ -521,10 +588,10 @@ F 1 "47pF" H 4850 3900 50  0000 L CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L R R1
+L R R6
 U 1 1 51ABA0DD
 P 4800 4300
-F 0 "R1" V 4880 4300 50  0000 C CNN
+F 0 "R6" V 4880 4300 50  0000 C CNN
 F 1 "10k" V 4800 4300 50  0000 C CNN
 	1    4800 4300
 	0    -1   -1   0   
