@@ -7,7 +7,7 @@ SRCS			:= main.c
 # Project fuse bits
 LFUSE			:= 0xB7
 HFUSE			:= 0xDD
-EFUSE			:= 0xF9
+EFUSE			:= 0x01
 
 # CPU speed, in Hz
 F_CPU			:= 18432000
