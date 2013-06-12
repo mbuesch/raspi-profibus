@@ -57,6 +57,29 @@ static void msleep(unsigned int msecs)
 	}
 }
 
+static int have_gpio_mapping(void)
+{
+	int fd;
+	char buf[4096] = { 0, };
+	ssize_t ret;
+
+	fd = open("/proc/iomem", O_RDONLY);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open /proc/iomem: %s\n",
+			strerror(errno));
+		return 0;
+	}
+
+	ret = read(fd, buf, sizeof(buf) - 1);
+	if (ret <= 0) {
+		fprintf(stderr, "Failed to read /proc/iomem: %s\n",
+			strerror(errno));
+		return 0;
+	}
+
+	return strstr(buf, "20200000-20200fff : bcm2708_gpio") != NULL;
+}
+
 static int set_gpio_pull(unsigned int gpio, uint32_t mode)
 {
 	unsigned int clkreg = (gpio < 32) ? GPPUDCLK0 : GPPUDCLK1;
@@ -150,7 +173,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	//TODO check if we are on raspberry
+	if (!have_gpio_mapping()) {
+		fprintf(stderr, "Did not find GPIO mapping.\n"
+			"Not running on Raspberry Pi?\n");
+		return EXIT_FAILURE;
+	}
 
 	err = map_gpio();
 	if (err)
