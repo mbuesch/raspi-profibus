@@ -1,0 +1,5 @@
+*.bin
+*.hex
+obj/
+dep/
+*.swp

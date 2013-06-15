@@ -2,7 +2,8 @@
 NAME			:= cp-phy
 
 # Project source files
-SRCS			:= main.c
+SRCS			:= main.c \
+			   profibus-phy.c
 
 # Project fuse bits
 LFUSE			:= 0xB7
