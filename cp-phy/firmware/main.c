@@ -9,6 +9,7 @@
 
 #include "profibus-phy.h"
 #include "raspi-interface.h"
+#include "util.h"
 
 #include <avr/io.h>
 
@@ -18,6 +19,7 @@ int main(void)
 	pb_phy_init(PB_PHY_BAUD_19200);
 	raspi_init();
 
+	irq_enable();
 	while (1) {
 	}
 }
