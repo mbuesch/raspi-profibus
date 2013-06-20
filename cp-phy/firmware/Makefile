@@ -2,8 +2,10 @@
 NAME			:= cp-phy
 
 # Project source files
-SRCS			:= main.c \
-			   profibus-phy.c
+SRCS			:= checksum.c \
+			   main.c \
+			   profibus-phy.c \
+			   raspi-interface.c
 
 # Project fuse bits
 LFUSE			:= 0xB7
@@ -130,7 +132,10 @@ $(call OBJS,$(SRCS)): obj/%.o: %.c
 all: $(HEX)
 
 %.s: %.c
-	$(QUIET_CC) $(CFLAGS) -S $*.c
+	$(QUIET_CC) $(CFLAGS) -S -o $@ $<
+
+%.e: %.c
+	$(QUIET_CC) $(CFLAGS) -E -o $@ $<
 
 $(BIN): $(call OBJS,$(SRCS))
 	$(QUIET_CC) $(CFLAGS) -o $(BIN) $(call OBJS,$(SRCS)) $(LDFLAGS) $(LDFLAGS)

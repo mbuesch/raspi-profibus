@@ -77,16 +77,21 @@ struct pb_telegram {
 	} _packed;
 } _packed;
 
-int8_t pb_sdr(struct pb_telegram *t);
-int8_t pb_sdn(struct pb_telegram *t);
+
+void pb_reset(void);
+
+int8_t pb_sdr(const struct pb_telegram *request,
+	      struct pb_telegram *reply);
+int8_t pb_sdn(const struct pb_telegram *request);
 
 enum pb_event {
 	PB_EV_SDN_COMPLETE,
+	PB_EV_SDR_SENT,
 	PB_EV_SDR_COMPLETE,
 	PB_EV_SDR_ERROR,
 };
 
-typedef void (*pb_notifier_t)(enum pb_event event);
+typedef void (*pb_notifier_t)(enum pb_event event, uint8_t value);
 
 void pb_set_notifier(pb_notifier_t notifier);
 

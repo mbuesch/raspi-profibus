@@ -78,7 +78,8 @@ enum pb_state {
 
 struct pb_context {
 	enum pb_state state;
-	struct pb_telegram *telegram;
+	const struct pb_telegram *request;
+	struct pb_telegram *reply;
 	uint8_t size;
 	uint8_t byte_ptr;
 	bool tail_wait;
@@ -87,6 +88,12 @@ struct pb_context {
 
 static struct pb_context profibus;
 
+
+static void pb_notify(enum pb_event event, uint8_t value)
+{
+	if (profibus.notifier)
+		profibus.notifier(event, value);
+}
 
 static uint8_t pb_telegram_size(const struct pb_telegram *t)
 {
@@ -142,7 +149,7 @@ static void pb_tx_next(void)
 	if (!(UCSR0A & (1 << UDRE0)))
 		return;
 
-	t = (const uint8_t *)profibus.telegram;
+	t = (const uint8_t *)profibus.request;
 	byte = t[profibus.byte_ptr];
 	profibus.byte_ptr++;
 
@@ -180,11 +187,11 @@ ISR(USART_TX_vect)
 		profibus.state = PB_RECEIVING_SDR;
 		profibus.size = 0;
 		profibus.byte_ptr = 0;
+		pb_notify(PB_EV_SDR_SENT, 0);
 	} else if (profibus.state == PB_SENDING_SDN) {
 		/* Transmission complete. Call notifier. */
 		profibus.state = PB_IDLE;
-		if (profibus.notifier)
-			profibus.notifier(PB_EV_SDN_COMPLETE);
+		pb_notify(PB_EV_SDN_COMPLETE, 0);
 	}
 
 out:
@@ -214,15 +221,13 @@ out:
 static void receive_complete(void)
 {
 	receiver_disable();
-	if (profibus.notifier)
-		profibus.notifier(PB_EV_SDR_COMPLETE);
+	pb_notify(PB_EV_SDR_COMPLETE, profibus.size);
 }
 
 static void receive_error(void)
 {
 	receiver_disable();
-	if (profibus.notifier)
-		profibus.notifier(PB_EV_SDR_ERROR);
+	pb_notify(PB_EV_SDR_ERROR, 0);
 }
 
 /* RX-complete interrupt */
@@ -235,13 +240,13 @@ ISR(USART_RX_vect)
 
 	data = UDR0;
 
-	t = (uint8_t *)profibus.telegram;
+	t = (uint8_t *)profibus.reply;
 	t[profibus.byte_ptr] = data;
 	profibus.byte_ptr++;
 
 	if (profibus.byte_ptr == 1) {
-		if (profibus.telegram->sd != PB_SD2) {
-			profibus.size = pb_telegram_size(profibus.telegram);
+		if (profibus.reply->sd != PB_SD2) {
+			profibus.size = pb_telegram_size(profibus.reply);
 			if (!profibus.size) {
 				receive_error();
 				goto out;
@@ -255,8 +260,8 @@ ISR(USART_RX_vect)
 		}
 	}
 	if (!profibus.size && profibus.byte_ptr == 3 &&
-	    profibus.telegram->sd == PB_SD2) {
-		profibus.size = pb_telegram_size(profibus.telegram);
+	    profibus.reply->sd == PB_SD2) {
+		profibus.size = pb_telegram_size(profibus.reply);
 		if (!profibus.size) {
 			receive_error();
 			goto out;
@@ -267,7 +272,8 @@ out:
 	mb();
 }
 
-static int8_t pb_transfer(struct pb_telegram *t,
+static int8_t pb_transfer(const struct pb_telegram *request,
+			  struct pb_telegram *reply,
 			  enum pb_state state)
 {
 	uint8_t sreg;
@@ -281,8 +287,9 @@ static int8_t pb_transfer(struct pb_telegram *t,
 	}
 
 	profibus.state = state;
-	profibus.telegram = t;
-	profibus.size = pb_telegram_size(t);
+	profibus.request = request;
+	profibus.reply = reply;
+	profibus.size = pb_telegram_size(request);
 	if (!profibus.size) {
 		err = -1;
 		goto out;
@@ -300,14 +307,35 @@ out:
 	return err;
 }
 
-int8_t pb_sdr(struct pb_telegram *t)
+void pb_reset(void)
 {
-	return pb_transfer(t, PB_SENDING_SDR);
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+
+	profibus.state = PB_IDLE;
+	profibus.request = NULL;
+	profibus.reply = NULL;
+	profibus.size = 0;
+	profibus.byte_ptr = 0;
+	profibus.tail_wait = 0;
+
+	set_rts(0);
+	UCSR0B &= ~(1 << UDRIE0);
+	receiver_disable();
+
+	irq_restore(sreg);
 }
 
-int8_t pb_sdn(struct pb_telegram *t)
+int8_t pb_sdr(const struct pb_telegram *request,
+	      struct pb_telegram *reply)
 {
-	return pb_transfer(t, PB_SENDING_SDN);
+	return pb_transfer(request, reply, PB_SENDING_SDR);
+}
+
+int8_t pb_sdn(const struct pb_telegram *request)
+{
+	return pb_transfer(request, NULL, PB_SENDING_SDN);
 }
 
 void pb_set_notifier(pb_notifier_t notifier)
@@ -318,13 +346,21 @@ void pb_set_notifier(pb_notifier_t notifier)
 int8_t pb_phy_init(enum pb_phy_baud baudrate)
 {
 	struct ubrr_value ubrr;
+	uint8_t sreg;
+	int8_t err = 0;
 
-	if (baudrate >= ARRAY_SIZE(baud_to_ubrr))
-		return -1;
+	sreg = irq_disable_save();
+
+	if (baudrate >= ARRAY_SIZE(baud_to_ubrr)) {
+		err = -1;
+		goto out;
+	}
 	memcpy_P(&ubrr, &baud_to_ubrr[baudrate], sizeof(ubrr));
 
-	if (!ubrr.ubrr)
-		return -1;
+	if (!ubrr.ubrr) {
+		err = -2;
+		goto out;
+	}
 
 	/* Initialize RTS signal */
 	RTS_DDR |= (1 << RTS_BIT);
@@ -340,17 +376,31 @@ int8_t pb_phy_init(enum pb_phy_baud baudrate)
 	UCSR0B = (1 << TXEN0) | (1 << TXCIE0);
 	receiver_disable();
 
+	/* Reset state */
+	pb_reset();
+	profibus.notifier = NULL;
+
 	/* Drain the RX buffer */
 	while (uart_rx(NULL))
 		mb();
 
-	return 0;
+out:
+	irq_restore(sreg);
+
+	return err;
 }
 
 void pb_phy_exit(void)
 {
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+
+	pb_reset();
 	set_rts(0);
 	UCSR0A = 0;
 	UCSR0B = 0;
 	UCSR0C = 0;
+
+	irq_restore(sreg);
 }
