@@ -140,13 +140,13 @@ static void handle_rx(void)
 		raspi.rx_blocked = 1;
 		break;
 	case RPI_PACK_PB_SDN:
-		raspi.rx_blocked = 1;
 		/* Send the profibus telegram. */
 		err = pb_sdn(&raspi.rx_packet.pb_telegram);
 		if (err) {
 			queue_nack();
 			return;
 		}
+		raspi.rx_blocked = 1;
 		break;
 	}
 }
