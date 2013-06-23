@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Wed 12 Jun 2013 12:08:52 AM CEST
+EESchema Schematic File Version 2  date Fri 21 Jun 2013 05:42:05 PM CEST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -31,14 +31,13 @@ LIBS:contrib
 LIBS:valves
 LIBS:raspberrypi
 LIBS:rs485-rs232
-LIBS:cp-phy-cache
 EELAYER 25  0
 EELAYER END
 $Descr A4 11700 8267
 encoding utf-8
 Sheet 1 1
 Title "Raspberry Pi / Profibus DP / CP-PHY"
-Date "11 jun 2013"
+Date "21 jun 2013"
 Rev "1.0"
 Comp "Michael Buesch <m@bues.ch>"
 Comment1 ""
@@ -299,7 +298,7 @@ L R R5
 U 1 1 51B79CC0
 P 6450 2450
 F 0 "R5" V 6530 2450 50  0000 C CNN
-F 1 "4.7k" V 6450 2450 50  0000 C CNN
+F 1 "10k" V 6450 2450 50  0000 C CNN
 	1    6450 2450
 	0    -1   -1   0   
 $EndComp
@@ -328,7 +327,7 @@ P 6450 1850
 F 0 "R2" V 6530 1850 50  0000 C CNN
 F 1 "4.7k" V 6450 1850 50  0000 C CNN
 	1    6450 1850
-	0    -1   -1   0   
+	0    1    -1   0   
 $EndComp
 $Comp
 L R R1

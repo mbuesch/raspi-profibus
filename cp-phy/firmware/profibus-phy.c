@@ -26,6 +26,11 @@
 #define RTS_PORT	PORTD
 #define RTS_BIT		2
 
+/* Activity LED */
+#define LED_ACT_DDR	DDRD
+#define LED_ACT_PORT	PORTD
+#define LED_ACT_BIT	7
+
 
 struct ubrr_value {
 	uint16_t ubrr;
@@ -89,6 +94,22 @@ struct pb_context {
 static struct pb_context profibus;
 
 
+static void set_rts(bool on)
+{
+	if (on)
+		RTS_PORT &= ~(1 << RTS_BIT);
+	else
+		RTS_PORT |= (1 << RTS_BIT);
+}
+
+static void set_activity_led(bool on)
+{
+	if (on)
+		LED_ACT_PORT |= (1 << LED_ACT_BIT);
+	else
+		LED_ACT_PORT &= ~(1 << LED_ACT_BIT);
+}
+
 static void pb_notify(enum pb_event event, uint8_t value)
 {
 	if (profibus.notifier)
@@ -115,14 +136,6 @@ static uint8_t pb_telegram_size(const struct pb_telegram *t)
 	}
 
 	return 0; /* error */
-}
-
-static void set_rts(bool on)
-{
-	if (on)
-		RTS_PORT &= ~(1 << RTS_BIT);
-	else
-		RTS_PORT |= (1 << RTS_BIT);
 }
 
 static uint8_t uart_rx(uint8_t *data_buf)
@@ -191,6 +204,7 @@ ISR(USART_TX_vect)
 	} else if (profibus.state == PB_SENDING_SDN) {
 		/* Transmission complete. Call notifier. */
 		profibus.state = PB_IDLE;
+		set_activity_led(0);
 		pb_notify(PB_EV_SDN_COMPLETE, 0);
 	}
 
@@ -218,17 +232,26 @@ out:
 	mb();
 }
 
-static void receive_complete(void)
+static void receive_finish(bool error)
 {
 	receiver_disable();
-	pb_notify(PB_EV_SDR_COMPLETE, profibus.size);
+	profibus.state = PB_IDLE;
+	set_activity_led(0);
+	pb_notify(error ? PB_EV_SDR_ERROR : PB_EV_SDR_COMPLETE,
+		  profibus.size);
+}
+
+static void receive_complete(void)
+{
+	receive_finish(0);
 }
 
 static void receive_error(void)
 {
-	receiver_disable();
-	pb_notify(PB_EV_SDR_ERROR, 0);
+	receive_finish(1);
 }
+
+//TODO RX timeout
 
 /* RX-complete interrupt */
 ISR(USART_RX_vect)
@@ -276,33 +299,38 @@ static int8_t pb_transfer(const struct pb_telegram *request,
 			  struct pb_telegram *reply,
 			  enum pb_state state)
 {
-	uint8_t sreg;
+	uint8_t sreg, request_size;
 	int8_t err = 0;
+
+	request_size = pb_telegram_size(request);
+	if (!request_size) {
+		err = -1;
+		goto out;
+	}
 
 	sreg = irq_disable_save();
 
 	if (profibus.state != PB_IDLE) {
 		err = -1;
-		goto out;
+		goto out_restore;
 	}
 
 	profibus.state = state;
 	profibus.request = request;
 	profibus.reply = reply;
-	profibus.size = pb_telegram_size(request);
-	if (!profibus.size) {
-		err = -1;
-		goto out;
-	}
+	profibus.size = request_size;
 	profibus.byte_ptr = 0;
 	profibus.tail_wait = 0;
+
+	set_activity_led(1);
 
 	UCSR0B |= (1 << UDRIE0);
 	set_rts(1);
 	pb_tx_next();
 
-out:
+out_restore:
 	irq_restore(sreg);
+out:
 
 	return err;
 }
@@ -365,6 +393,10 @@ int8_t pb_phy_init(enum pb_phy_baud baudrate)
 	/* Initialize RTS signal */
 	RTS_DDR |= (1 << RTS_BIT);
 	set_rts(0);
+
+	/* Initialize activity LED */
+	LED_ACT_DDR |= (1 << LED_ACT_BIT);
+	set_activity_led(0);
 
 	/* Set baud rate */
 	UBRR0L = ubrr.ubrr & 0xFF;

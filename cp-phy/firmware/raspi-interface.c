@@ -107,6 +107,8 @@ static void queue_nack(void)
 
 static void handle_rx(void)
 {
+	int8_t err;
+
 	if (!check_fcs(&raspi.rx_packet)) {
 		queue_nack();
 		return;
@@ -128,15 +130,23 @@ static void handle_rx(void)
 		queue_ack();
 		break;
 	case RPI_PACK_PB_SDR:
-		raspi.rx_blocked = 1;
 		/* Send the profibus telegram. */
-		pb_sdr(&raspi.rx_packet.pb_telegram,
-		       &raspi.tx_packet.pb_telegram);
+		err = pb_sdr(&raspi.rx_packet.pb_telegram,
+			     &raspi.tx_packet.pb_telegram);
+		if (err) {
+			queue_nack();
+			return;
+		}
+		raspi.rx_blocked = 1;
 		break;
 	case RPI_PACK_PB_SDN:
 		raspi.rx_blocked = 1;
 		/* Send the profibus telegram. */
-		pb_sdn(&raspi.rx_packet.pb_telegram);
+		err = pb_sdn(&raspi.rx_packet.pb_telegram);
+		if (err) {
+			queue_nack();
+			return;
+		}
 		break;
 	}
 }
