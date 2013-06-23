@@ -147,7 +147,7 @@ class CpPhy(object):
 			time.sleep(0.2)
 
 			# Send a software reset
-			self.sendReset(sync=True)
+			self.sendReset()
 		except:
 			GPIO.cleanup()
 			raise
@@ -178,16 +178,24 @@ class CpPhy(object):
 			if reply:
 				return reply
 
-	def sendReset(self, sync=False):
+	def sendReset(self):
 		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_RESET),
-					  sync=sync)
+					  sync=True)
 
-	def profibusSetPhyConfig(self, baudrate, sync=False):
+	def profibusSetPhyConfig(self, baudrate):
 		try:
 			baudID = self.baud2id[baudrate]
 		except KeyError:
 			raise PhyError("Invalid baud-rate")
 		payload = [ baudID ]
-		self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG),
-				   payload)
+		message = CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG, payload)
+		reply = self.__sendMessage(message, sync=True)
 		pass#TODO
+
+	def profibusSend_SDN(self, telegram, sync=False):
+		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDN,
+						       telegram), sync)
+
+	def profibusSend_SDR(self, telegram, sync=False):
+		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDR,
+						       telegram), sync)
