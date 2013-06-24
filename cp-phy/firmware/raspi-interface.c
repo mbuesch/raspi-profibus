@@ -116,7 +116,7 @@ static void handle_rx(void)
 
 	switch (raspi.rx_packet.fc) {
 	case RPI_PACK_NOP:
-	case RPI_PACK_PB_SDR_REPLY:
+	case RPI_PACK_PB_SRD_REPLY:
 	case RPI_PACK_ACK:
 	case RPI_PACK_NACK:
 		break;
@@ -129,9 +129,9 @@ static void handle_rx(void)
 		//TODO
 		queue_ack();
 		break;
-	case RPI_PACK_PB_SDR:
+	case RPI_PACK_PB_SRD:
 		/* Send the profibus telegram. */
-		err = pb_sdr(&raspi.rx_packet.pb_telegram,
+		err = pb_srd(&raspi.rx_packet.pb_telegram,
 			     &raspi.tx_packet.pb_telegram);
 		if (err) {
 			queue_nack();
@@ -202,17 +202,17 @@ static void profibus_event(enum pb_event event, uint8_t value)
 		raspi.rx_blocked = 0;
 		queue_ack();
 		break;
-	case PB_EV_SDR_SENT:
+	case PB_EV_SRD_SENT:
 		raspi.rx_blocked = 0;
 		break;
-	case PB_EV_SDR_COMPLETE:
+	case PB_EV_SRD_COMPLETE:
 		raspi.tx_packet_size = (uint16_t)value + RASPI_PACK_HDR_LEN;
-		raspi.tx_packet.fc = RPI_PACK_PB_SDR_REPLY;
+		raspi.tx_packet.fc = RPI_PACK_PB_SRD_REPLY;
 		raspi.tx_packet.pl_size = value;
 		raspi.tx_packet.fcs = calculate_fcs(&raspi.tx_packet);
 		raspi_irq_set();
 		break;
-	case PB_EV_SDR_ERROR:
+	case PB_EV_SRD_ERROR:
 		queue_nack();
 		break;
 	}

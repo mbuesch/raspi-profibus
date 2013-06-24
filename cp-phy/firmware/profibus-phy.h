@@ -80,15 +80,15 @@ struct pb_telegram {
 
 void pb_reset(void);
 
-int8_t pb_sdr(const struct pb_telegram *request,
+int8_t pb_srd(const struct pb_telegram *request,
 	      struct pb_telegram *reply);
 int8_t pb_sdn(const struct pb_telegram *request);
 
 enum pb_event {
 	PB_EV_SDN_COMPLETE,
-	PB_EV_SDR_SENT,
-	PB_EV_SDR_COMPLETE,
-	PB_EV_SDR_ERROR,
+	PB_EV_SRD_SENT,
+	PB_EV_SRD_COMPLETE,
+	PB_EV_SRD_ERROR,
 };
 
 typedef void (*pb_notifier_t)(enum pb_event event, uint8_t value);

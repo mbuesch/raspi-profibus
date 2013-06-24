@@ -36,8 +36,8 @@ class CpPhyMessage(object):
 	RPI_PACK_NOP		= 0	# No operation
 	RPI_PACK_RESET		= 1	# Reset
 	RPI_PACK_SETCFG		= 2	# Set config
-	RPI_PACK_PB_SDR		= 3	# Profibus SDR request
-	RPI_PACK_PB_SDR_REPLY	= 4	# Profibus SDR reply
+	RPI_PACK_PB_SRD		= 3	# Profibus SRD request
+	RPI_PACK_PB_SRD_REPLY	= 4	# Profibus SRD reply
 	RPI_PACK_PB_SDN		= 5	# Profibus SDN request
 	RPI_PACK_ACK		= 6	# Short ACK
 	RPI_PACK_NACK		= 7	# Short NACK
@@ -179,8 +179,10 @@ class CpPhy(object):
 				return reply
 
 	def sendReset(self):
-		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_RESET),
-					  sync=True)
+		reply = self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_RESET),
+					   sync=True)
+		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
+			raise PhyError("Failed to reset PHY")
 
 	def profibusSetPhyConfig(self, baudrate):
 		try:
@@ -190,12 +192,13 @@ class CpPhy(object):
 		payload = [ baudID ]
 		message = CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG, payload)
 		reply = self.__sendMessage(message, sync=True)
-		pass#TODO
+		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
+			raise PhyError("Failed to upload config")
 
-	def profibusSend_SDN(self, telegram, sync=False):
+	def profibusSend_SDN(self, telegramData, sync=False):
 		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDN,
-						       telegram), sync)
+						       telegramData), sync)
 
-	def profibusSend_SDR(self, telegram, sync=False):
-		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDR,
-						       telegram), sync)
+	def profibusSend_SRD(self, telegramData, sync=False):
+		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SRD,
+						       telegramData), sync)

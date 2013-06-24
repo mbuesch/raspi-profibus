@@ -11,8 +11,8 @@ enum raspi_packet_fc {
 	RPI_PACK_NOP,		/* No operation */
 	RPI_PACK_RESET,		/* Reset */
 	RPI_PACK_SETCFG,	/* Set config */
-	RPI_PACK_PB_SDR,	/* Profibus SDR request */
-	RPI_PACK_PB_SDR_REPLY,	/* Profibus SDR reply */
+	RPI_PACK_PB_SRD,	/* Profibus SRD request */
+	RPI_PACK_PB_SRD_REPLY,	/* Profibus SRD reply */
 	RPI_PACK_PB_SDN,	/* Profibus SDN request */
 	RPI_PACK_ACK,		/* Short ACK */
 	RPI_PACK_NACK,		/* Short NACK */

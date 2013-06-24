@@ -76,9 +76,9 @@ static const struct ubrr_value PROGMEM baud_to_ubrr[] = {
 
 enum pb_state {
 	PB_IDLE,
-	PB_SENDING_SDR,
+	PB_SENDING_SRD,
 	PB_SENDING_SDN,
-	PB_RECEIVING_SDR,
+	PB_RECEIVING_SRD,
 };
 
 struct pb_context {
@@ -193,14 +193,14 @@ ISR(USART_TX_vect)
 		goto out;
 	profibus.tail_wait = 0;
 
-	if (profibus.state == PB_SENDING_SDR) {
+	if (profibus.state == PB_SENDING_SRD) {
 		/* Transmission complete. Prepare to receive reply. */
 		set_rts(0);
 		receiver_enable();
-		profibus.state = PB_RECEIVING_SDR;
+		profibus.state = PB_RECEIVING_SRD;
 		profibus.size = 0;
 		profibus.byte_ptr = 0;
-		pb_notify(PB_EV_SDR_SENT, 0);
+		pb_notify(PB_EV_SRD_SENT, 0);
 	} else if (profibus.state == PB_SENDING_SDN) {
 		/* Transmission complete. Call notifier. */
 		profibus.state = PB_IDLE;
@@ -237,7 +237,7 @@ static void receive_finish(bool error)
 	receiver_disable();
 	profibus.state = PB_IDLE;
 	set_activity_led(0);
-	pb_notify(error ? PB_EV_SDR_ERROR : PB_EV_SDR_COMPLETE,
+	pb_notify(error ? PB_EV_SRD_ERROR : PB_EV_SRD_COMPLETE,
 		  profibus.size);
 }
 
@@ -355,10 +355,10 @@ void pb_reset(void)
 	irq_restore(sreg);
 }
 
-int8_t pb_sdr(const struct pb_telegram *request,
+int8_t pb_srd(const struct pb_telegram *request,
 	      struct pb_telegram *reply)
 {
-	return pb_transfer(request, reply, PB_SENDING_SDR);
+	return pb_transfer(request, reply, PB_SENDING_SRD);
 }
 
 int8_t pb_sdn(const struct pb_telegram *request)
