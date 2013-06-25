@@ -13,14 +13,14 @@ class FdlError(Exception):
 
 class FdlTelegram(object):
 	# Start delimiter
-	PB_SD1		= 0x10
-	PB_SD2		= 0x68
-	PB_SD3		= 0xA2
-	PB_SD4		= 0xDC
-	PB_SC		= 0xE5
+	SD1		= 0x10
+	SD2		= 0x68
+	SD3		= 0xA2
+	SD4		= 0xDC
+	SC		= 0xE5
 
 	# End delimiter
-	PB_ED		= 0x16
+	ED		= 0x16
 
 	def __init__(self, sd, haveLE=False, da=None, sa=None,
 		     fc=None, du=None, haveFCS=False, ed=None):
@@ -66,17 +66,17 @@ class FdlTelegram(object):
 	def fromRawData(data):
 		try:
 			sd = data[0]
-			if sd == FdlTelegram.PB_SD1:
+			if sd == FdlTelegram.SD1:
 				# No DU
 				if len(data) != 6:
 					raise FdlError("Invalid FDL packet length")
-				if data[5] != FdlTelegram.PB_ED:
+				if data[5] != FdlTelegram.ED:
 					raise FdlError("Invalid end delimiter")
 				if data[4] != FdlTelegram.calcFCS(data[1:4]):
 					raise FdlError("Checksum mismatch")
 				return FdlTelegram_stat0(
 					da=data[1], sa=data[2], fc=data[3])
-			elif sd == FdlTelegram.PB_SD2:
+			elif sd == FdlTelegram.SD2:
 				# Variable DU
 				le = data[1]
 				if data[2] != le:
@@ -85,7 +85,7 @@ class FdlTelegram(object):
 					raise FdlError("Invalid LE field")
 				if data[3] != sd:
 					raise FdlError("Repeated SD mismatch")
-				if data[8+le] != FdlTelegram.PB_ED:
+				if data[8+le] != FdlTelegram.ED:
 					raise FdlError("Invalid end delimiter")
 				if data[7+le] != FdlTelegram.calcFCS(data[4:4+le+1]):
 					raise FdlError("Checksum mismatch")
@@ -94,23 +94,23 @@ class FdlTelegram(object):
 					raise FdlError("FDL packet shorter than FE")
 				return FdlTelegram_var(
 					da=data[4], sa=data[5], fc=data[6], du=du)
-			elif sd == FdlTelegram.PB_SD3:
+			elif sd == FdlTelegram.SD3:
 				# Static 8 byte DU
 				if len(data) != 14:
 					raise FdlError("Invalid FDL packet length")
-				if data[13] != FdlTelegram.PB_ED:
+				if data[13] != FdlTelegram.ED:
 					raise FdlError("Invalid end delimiter")
 				if data[12] != FdlTelegram.calcFCS(data[1:12]):
 					raise FdlError("Checksum mismatch")
 				return FdlTelegram_stat8(
 					da=data[1], sa=data[2], fc=data[3], du=data[4:12])
-			elif sd == FdlTelegram.PB_SD4:
+			elif sd == FdlTelegram.SD4:
 				# Token telegram
 				if len(data) != 3:
 					raise FdlError("Invalid FDL packet length")
 				return FdlTelegram_token(
 					da=data[1], sa=data[2])
-			elif sd == FdlTelegram.PB_SC:
+			elif sd == FdlTelegram.SC:
 				# ACK
 				if len(data) != 1:
 					raise FdlError("Invalid FDL packet length")
@@ -124,29 +124,29 @@ class FdlTelegram_var(FdlTelegram):
 	def __init__(self, da, sa, fc, du):
 		if len(du) > 246:
 			raise FdlError("Invalid data length")
-		FdlTelegram.__init__(self, sd=FdlTelegram.PB_SD2,
+		FdlTelegram.__init__(self, sd=FdlTelegram.SD2,
 			haveLE=True, da=da, sa=sa, fc=fc,
-			du=du, haveFCS=True, ed=FdlTelegram.PB_ED)
+			du=du, haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_stat8(FdlTelegram):
 	def __init__(self, da, sa, fc, du):
 		if len(du) != 8:
 			raise FdlError("Invalid data length")
-		FdlTelegram.__init__(self, sd=FdlTelegram.PB_SD3,
+		FdlTelegram.__init__(self, sd=FdlTelegram.SD3,
 			da=da, sa=sa, fc=fc,
-			du=du, haveFCS=True, ed=FdlTelegram.PB_ED)
+			du=du, haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_stat0(FdlTelegram):
 	def __init__(self, da, sa, fc):
-		FdlTelegram.__init__(self, sd=FdlTelegram.PB_SD1,
+		FdlTelegram.__init__(self, sd=FdlTelegram.SD1,
 			da=da, sa=sa, fc=fc,
-			haveFCS=True, ed=FdlTelegram.PB_ED)
+			haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_token(FdlTelegram):
 	def __init__(self, da, sa):
-		FdlTelegram.__init__(self, sd=FdlTelegram.PB_SD4,
+		FdlTelegram.__init__(self, sd=FdlTelegram.SD4,
 			da=da, sa=sa)
 
 class FdlTelegram_ack(FdlTelegram):
 	def __init__(self):
-		FdlTelegram.__init__(self, sd=FdlTelegram.PB_SC)
+		FdlTelegram.__init__(self, sd=FdlTelegram.SC)
