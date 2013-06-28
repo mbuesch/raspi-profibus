@@ -109,10 +109,8 @@ static void handle_rx(void)
 {
 	int8_t err;
 
-	if (!check_fcs(&raspi.rx_packet)) {
-		queue_nack();
-		return;
-	}
+	if (!check_fcs(&raspi.rx_packet))
+		goto error_nack;
 
 	switch (raspi.rx_packet.fc) {
 	case RPI_PACK_NOP:
@@ -126,7 +124,14 @@ static void handle_rx(void)
 		queue_ack();
 		break;
 	case RPI_PACK_SETCFG:
-		//TODO
+		if (raspi.rx_packet.pl_size < sizeof(raspi.rx_packet.config))
+			goto error_nack;
+		if (raspi.rx_packet.config.baudrate != pb_get_baudrate()) {
+			err = pb_phy_init(raspi.rx_packet.config.baudrate);
+			if (err)
+				goto error_nack;
+		}
+		pb_set_rx_timeout(raspi.rx_packet.config.rx_timeout_ms);
 		queue_ack();
 		break;
 	case RPI_PACK_PB_SRD:
@@ -149,6 +154,11 @@ static void handle_rx(void)
 		raspi.rx_blocked = 1;
 		break;
 	}
+
+	return;
+
+error_nack:
+	queue_nack();
 }
 
 ISR(SPI_STC_vect)

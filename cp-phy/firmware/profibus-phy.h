@@ -94,6 +94,10 @@ enum pb_event {
 typedef void (*pb_notifier_t)(enum pb_event event, uint8_t value);
 
 void pb_set_notifier(pb_notifier_t notifier);
+void pb_set_rx_timeout(uint8_t ms);
+
+void pb_ms_tick(void);
+enum pb_phy_baud pb_get_baudrate(void);
 
 int8_t pb_phy_init(enum pb_phy_baud baudrate);
 void pb_phy_exit(void);

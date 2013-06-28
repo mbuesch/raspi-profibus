@@ -87,8 +87,11 @@ struct pb_context {
 	struct pb_telegram *reply;
 	uint8_t size;
 	uint8_t byte_ptr;
+	uint8_t reply_timeout;
+	uint8_t reply_timeout_count;
 	bool tail_wait;
 	pb_notifier_t notifier;
+	enum pb_phy_baud baudrate;
 };
 
 static struct pb_context profibus;
@@ -200,6 +203,7 @@ ISR(USART_TX_vect)
 		profibus.state = PB_RECEIVING_SRD;
 		profibus.size = 0;
 		profibus.byte_ptr = 0;
+		profibus.reply_timeout_count = profibus.reply_timeout;
 		pb_notify(PB_EV_SRD_SENT, 0);
 	} else if (profibus.state == PB_SENDING_SDN) {
 		/* Transmission complete. Call notifier. */
@@ -250,8 +254,6 @@ static void receive_error(void)
 {
 	receive_finish(1);
 }
-
-//TODO RX timeout
 
 /* RX-complete interrupt */
 ISR(USART_RX_vect)
@@ -371,6 +373,31 @@ void pb_set_notifier(pb_notifier_t notifier)
 	profibus.notifier = notifier;
 }
 
+void pb_set_rx_timeout(uint8_t ms)
+{
+	profibus.reply_timeout = max(ms, 1);
+}
+
+void pb_ms_tick(void)
+{
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+
+	if (profibus.state == PB_RECEIVING_SRD) {
+		profibus.reply_timeout_count--;
+		if (profibus.reply_timeout_count == 0)
+			receive_error();
+	}
+
+	irq_restore(sreg);
+}
+
+enum pb_phy_baud pb_get_baudrate(void)
+{
+	return profibus.baudrate;
+}
+
 int8_t pb_phy_init(enum pb_phy_baud baudrate)
 {
 	struct ubrr_value ubrr;
@@ -410,7 +437,9 @@ int8_t pb_phy_init(enum pb_phy_baud baudrate)
 
 	/* Reset state */
 	pb_reset();
+	pb_set_rx_timeout(100);
 	profibus.notifier = NULL;
+	profibus.baudrate = baudrate;
 
 	/* Drain the RX buffer */
 	while (uart_rx(NULL))

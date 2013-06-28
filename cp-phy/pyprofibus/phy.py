@@ -209,12 +209,14 @@ class CpPhy(object):
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
 			raise PhyError("Failed to reset PHY")
 
-	def profibusSetPhyConfig(self, baudrate):
+	def profibusSetPhyConfig(self, baudrate, rxTimeoutMs):
 		try:
 			baudID = self.baud2id[baudrate]
 		except KeyError:
 			raise PhyError("Invalid baud-rate")
-		payload = [ baudID ]
+		if rxTimeoutMs < 1 or rxTimeoutMs > 255:
+			raise PhyError("Invalid RX timeout")
+		payload = [ baudID, rxTimeoutMs ]
 		message = CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG, payload)
 		reply = self.__sendMessage(message, sync=True)
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
