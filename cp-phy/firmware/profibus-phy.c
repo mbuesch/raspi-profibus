@@ -370,12 +370,20 @@ int8_t pb_sdn(const struct pb_telegram *request)
 
 void pb_set_notifier(pb_notifier_t notifier)
 {
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
 	profibus.notifier = notifier;
+	irq_restore(sreg);
 }
 
 void pb_set_rx_timeout(uint8_t ms)
 {
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
 	profibus.reply_timeout = max(ms, 1);
+	irq_restore(sreg);
 }
 
 void pb_ms_tick(void)
@@ -395,7 +403,14 @@ void pb_ms_tick(void)
 
 enum pb_phy_baud pb_get_baudrate(void)
 {
-	return profibus.baudrate;
+	enum pb_phy_baud baudrate;
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+	baudrate = profibus.baudrate;
+	irq_restore(sreg);
+
+	return baudrate;
 }
 
 int8_t pb_phy_init(enum pb_phy_baud baudrate)
