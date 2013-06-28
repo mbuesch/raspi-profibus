@@ -131,7 +131,7 @@ static void handle_rx(void)
 		if (raspi.rx_packet.pl_size < sizeof(raspi.rx_packet.config))
 			goto error_nack;
 		if (raspi.rx_packet.config.baudrate != pb_get_baudrate()) {
-			err = pb_phy_init(raspi.rx_packet.config.baudrate);
+			err = pb_set_baudrate(raspi.rx_packet.config.baudrate);
 			if (err)
 				goto error_nack;
 		}

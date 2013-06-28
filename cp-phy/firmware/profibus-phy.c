@@ -401,23 +401,11 @@ void pb_ms_tick(void)
 	irq_restore(sreg);
 }
 
-enum pb_phy_baud pb_get_baudrate(void)
-{
-	enum pb_phy_baud baudrate;
-	uint8_t sreg;
-
-	sreg = irq_disable_save();
-	baudrate = profibus.baudrate;
-	irq_restore(sreg);
-
-	return baudrate;
-}
-
-int8_t pb_phy_init(enum pb_phy_baud baudrate)
+int8_t pb_set_baudrate(enum pb_phy_baud baudrate)
 {
 	struct ubrr_value ubrr;
-	uint8_t sreg;
 	int8_t err = 0;
+	uint8_t sreg;
 
 	sreg = irq_disable_save();
 
@@ -432,6 +420,37 @@ int8_t pb_phy_init(enum pb_phy_baud baudrate)
 		goto out;
 	}
 
+	UBRR0 = ubrr.ubrr;
+	if (ubrr.u2x)
+		UCSR0A |= (1 << U2X0);
+	else
+		UCSR0A &= ~(1 << U2X0);
+	profibus.baudrate = baudrate;
+
+out:
+	irq_restore(sreg);
+
+	return err;
+}
+
+enum pb_phy_baud pb_get_baudrate(void)
+{
+	enum pb_phy_baud baudrate;
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+	baudrate = profibus.baudrate;
+	irq_restore(sreg);
+
+	return baudrate;
+}
+
+void pb_phy_init(void)
+{
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+
 	/* Initialize RTS signal */
 	RTS_DDR |= (1 << RTS_BIT);
 	set_rts(0);
@@ -440,30 +459,25 @@ int8_t pb_phy_init(enum pb_phy_baud baudrate)
 	LED_ACT_DDR |= (1 << LED_ACT_BIT);
 	set_activity_led(0);
 
-	/* Set baud rate */
-	UBRR0L = ubrr.ubrr & 0xFF;
-	UBRR0H = (ubrr.ubrr >> 8) & 0xFF;
-	UCSR0A = ubrr.u2x ? (1 << U2X0) : 0;
+	/* Initialize UART */
+	UCSR0A = 0;
 	/* 8 data bits, 1 stop bit, even parity */
 	UCSR0C = (1 << UCSZ00) | (1 << UCSZ01) | (1 << UPM01);
 	/* Enable transmitter. */
 	UCSR0B = (1 << TXEN0) | (1 << TXCIE0);
+	pb_set_baudrate(PB_PHY_BAUD_19200);
 	receiver_disable();
 
 	/* Reset state */
 	pb_reset();
 	pb_set_rx_timeout(100);
 	profibus.notifier = NULL;
-	profibus.baudrate = baudrate;
 
 	/* Drain the RX buffer */
-	while (uart_rx(NULL))
-		mb();
+//	while (uart_rx(NULL))
+//		mb();
 
-out:
 	irq_restore(sreg);
-
-	return err;
 }
 
 void pb_phy_exit(void)

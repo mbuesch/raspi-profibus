@@ -97,9 +97,11 @@ void pb_set_notifier(pb_notifier_t notifier);
 void pb_set_rx_timeout(uint8_t ms);
 
 void pb_ms_tick(void);
+
+int8_t pb_set_baudrate(enum pb_phy_baud baudrate);
 enum pb_phy_baud pb_get_baudrate(void);
 
-int8_t pb_phy_init(enum pb_phy_baud baudrate);
+void pb_phy_init(void);
 void pb_phy_exit(void);
 
 #endif /* PROFIBUS_PHY_H_ */

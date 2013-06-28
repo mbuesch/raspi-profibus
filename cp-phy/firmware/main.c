@@ -35,7 +35,7 @@ static void systemtimer_init(void)
 
 int main(void)
 {
-	pb_phy_init(PB_PHY_BAUD_19200);
+	pb_phy_init();
 	raspi_init();
 	systemtimer_init();
 
