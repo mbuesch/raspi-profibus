@@ -71,6 +71,7 @@ class DpTelegram(object):
 	# This function is overloaded in subclasses.
 	def getDU(self):
 		du = []
+		#TODO SAP should be part of FDL
 		if self.dsap is not None:
 			du.append(self.dsap)
 		if self.ssap is not None:
