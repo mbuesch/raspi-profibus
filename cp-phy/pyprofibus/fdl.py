@@ -13,11 +13,11 @@ class FdlError(Exception):
 
 class FdlTelegram(object):
 	# Start delimiter
-	SD1		= 0x10
-	SD2		= 0x68
-	SD3		= 0xA2
-	SD4		= 0xDC
-	SC		= 0xE5
+	SD1		= 0x10	# No DU
+	SD2		= 0x68	# Variable DU
+	SD3		= 0xA2	# 8 octet fixed DU
+	SD4		= 0xDC	# Token telegram
+	SC		= 0xE5	# Short ACK
 
 	# End delimiter
 	ED		= 0x16
@@ -29,38 +29,44 @@ class FdlTelegram(object):
 	# Frame Control
 	FC_REQ		= 0x40	# Request
 
-	# Request Frame Control (FC_REQ set)
-	FC_REQ_MASK	= 0x0F
+	# Request Frame Control function codes (FC_REQ set)
+	FC_REQFUNC_MASK	= 0x0F
 	FC_TIME_EV	= 0x00
-	FC_SDN_LO	= 0x04
-	FC_SDN_HI	= 0x06
-	FC_DDB		= 0x07
-	FC_FDL_STAT	= 0x09
+	FC_SDA_LO	= 0x03	# SDA low prio
+	FC_SDN_LO	= 0x04	# SDN low prio
+	FC_SDA_HI	= 0x05	# SDA high prio
+	FC_SDN_HI	= 0x06	# SDN high prio
+	FC_DDB		= 0x07	# Req. diagnosis data
+	FC_FDL_STAT	= 0x09	# Req. FDL status
 	FC_TE		= 0x0A
 	FC_CE		= 0x0B
-	FC_SRD_LO	= 0x0C
-	FC_SRD_HI	= 0x0D
-	FC_IDENT	= 0x0E
-	FC_LSAP		= 0x0F
-	FC_FCV		= 0x10
-	FC_FCB		= 0x20
+	FC_SRD_LO	= 0x0C	# SRD low prio
+	FC_SRD_HI	= 0x0D	# SRD high prio
+	FC_IDENT	= 0x0E	# Req. ident
+	FC_LSAP		= 0x0F	# Req. LSAP status
 
-	# Response Frame Control (FC_REQ clear)
-	FC_ERR_MASK	= 0x0F
-	FC_OK		= 0x00
-	FC_UE		= 0x01
-	FC_RR		= 0x02
-	FC_RS		= 0x03
-	FC_DL		= 0x08
-	FC_NR		= 0x09
-	FC_DH		= 0x0A
-	FC_RDL		= 0x0C
-	FC_RDH		= 0x0D
-	FC_STAT_MASK	= 0x30
-	FC_SLAVE	= 0x00
-	FC_MNRDY	= 0x10
-	FC_MRDY		= 0x20
-	FC_MTR		= 0x30
+	# Frame Control Frame Count Bit (FC_REQ set)
+	FC_FCV		= 0x10	# Frame Count Bit valid
+	FC_FCB		= 0x20	# Frame Count Bit
+
+	# Response Frame Control function codes (FC_REQ clear)
+	FC_RESFUNC_MASK	= 0x0F
+	FC_OK		= 0x00	# Positive ACK
+	FC_UE		= 0x01	# User error
+	FC_RR		= 0x02	# Resource error
+	FC_RS		= 0x03	# No service activated
+	FC_DL		= 0x08	# Res. data low
+	FC_NR		= 0x09	# ACK negative
+	FC_DH		= 0x0A	# Res. data high
+	FC_RDL		= 0x0C	# Res. data low, resource error
+	FC_RDH		= 0x0D	# Res. data high, resource error
+
+	# Response Frame Control Station Type (FC_REQ clear)
+	FC_STYPE_MASK	= 0x30
+	FC_SLAVE	= 0x00	# Slave station
+	FC_MNRDY	= 0x10	# Master, not ready to enter token ring
+	FC_MRDY		= 0x20	# Master, ready to enter token ring
+	FC_MTR		= 0x30	# Master, in token ring
 
 	def __init__(self, sd, haveLE=False, da=None, sa=None,
 		     fc=None, du=None, haveFCS=False, ed=None):
