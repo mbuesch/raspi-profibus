@@ -75,10 +75,11 @@ class CpPhyMessage(object):
 		if len(data) < self.RASPI_PACK_HDR_LEN:
 			raise PhyError("CpPhyMessage: Message too small")
 		if self.calculateChecksum(data) != data[2]:
-			raise PhyError("CpPhyMessage: Invalid checksum")
+			raise PhyError("CpPhyMessage: Invalid checksum 0x%02X in: %s" %\
+				(data[2], str(self)))
 		self.payload = data[3:]
 		if self.fc < 0 or self.fc > self.__RPI_PACK_FC_MAX:
-			raise PhyError("CpPhyMessage: Unknown frame control %02X" %\
+			raise PhyError("CpPhyMessage: Unknown frame control 0x%02X" %\
 				self.fc)
 		if len(self.payload) != data[1]:
 			raise PhyError("CpPhyMessage: Invalid payload length")
