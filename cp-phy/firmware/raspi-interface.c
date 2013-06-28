@@ -187,9 +187,9 @@ ISR(SPI_STC_vect)
 
 			if (raspi.rx_byte_ptr >= RASPI_PACK_HDR_LEN &&
 			    raspi.rx_byte_ptr - RASPI_PACK_HDR_LEN == raspi.rx_packet.pl_size) {
+				raspi.rx_byte_ptr = 0;
 				/* Handle received packet. */
 				handle_rx();
-				raspi.rx_byte_ptr = 0;
 			}
 		}
 	}

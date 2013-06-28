@@ -182,7 +182,12 @@ class CpPhy(object):
 	def pollReply(self):
 		if not GPIO.event_detected(self.GPIO_IRQ):
 			return None
-		reply = self.spi.readbytes(CpPhyMessage.RASPI_PACK_HDR_LEN)
+		while 1:
+			fc = self.spi.readbytes(1)[0]
+			if fc != CpPhyMessage.RPI_PACK_NOP:
+				break
+		reply = [ fc ]
+		reply.extend(self.spi.readbytes(CpPhyMessage.RASPI_PACK_HDR_LEN - 1))
 		payloadLen = reply[1] & 0xFF
 		if payloadLen:
 			reply.extend(self.spi.readbytes(payloadLen))
