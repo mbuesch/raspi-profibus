@@ -223,3 +223,15 @@ class FdlTelegram_FdlStatReq(FdlTelegram_stat0):
 		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
 			fc=FdlTelegram.FC_REQ |\
 			   FdlTelegram.FC_FDL_STAT)
+
+class FdlTelegram_IdentReq(FdlTelegram_stat0):
+	def __init__(self, da, sa):
+		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
+			fc=FdlTelegram.FC_REQ |\
+			   FdlTelegram.FC_IDENT)
+
+class FdlTelegram_LsapReq(FdlTelegram_stat0):
+	def __init__(self, da, sa):
+		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
+			fc=FdlTelegram.FC_REQ |\
+			   FdlTelegram.FC_LSAP)
