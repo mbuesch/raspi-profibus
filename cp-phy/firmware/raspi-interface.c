@@ -87,22 +87,26 @@ static bool check_fcs(const struct raspi_packet *p)
 	return 1;
 }
 
+static void queue_tx_packet(uint8_t fc, uint8_t payload_size)
+{
+	raspi.tx_packet_size = (uint16_t)payload_size + RASPI_PACK_HDR_LEN;
+	raspi.tx_byte_ptr = 0;
+
+	raspi.tx_packet.fc = fc;
+	raspi.tx_packet.pl_size = payload_size;
+	raspi.tx_packet.fcs = calculate_fcs(&raspi.tx_packet);
+
+	raspi_irq_set();
+}
+
 static void queue_ack(void)
 {
-	raspi.tx_packet_size = RASPI_PACK_HDR_LEN;
-	raspi.tx_packet.fc = RPI_PACK_ACK;
-	raspi.tx_packet.pl_size = 0;
-	raspi.tx_packet.fcs = calculate_fcs(&raspi.tx_packet);
-	raspi_irq_set();
+	queue_tx_packet(RPI_PACK_ACK, 0);
 }
 
 static void queue_nack(void)
 {
-	raspi.tx_packet_size = RASPI_PACK_HDR_LEN;
-	raspi.tx_packet.fc = RPI_PACK_NACK;
-	raspi.tx_packet.pl_size = 0;
-	raspi.tx_packet.fcs = calculate_fcs(&raspi.tx_packet);
-	raspi_irq_set();
+	queue_tx_packet(RPI_PACK_NACK, 0);
 }
 
 static void handle_rx(void)
@@ -199,6 +203,7 @@ ISR(SPI_STC_vect)
 		if (raspi.tx_byte_ptr >= raspi.tx_packet_size) {
 			/* All bytes sent. */
 			raspi.tx_packet_size = 0;
+			raspi.tx_byte_ptr = 0;
 		}
 	}
 
@@ -216,11 +221,7 @@ static void profibus_event(enum pb_event event, uint8_t value)
 		raspi.rx_blocked = 0;
 		break;
 	case PB_EV_SRD_COMPLETE:
-		raspi.tx_packet_size = (uint16_t)value + RASPI_PACK_HDR_LEN;
-		raspi.tx_packet.fc = RPI_PACK_PB_SRD_REPLY;
-		raspi.tx_packet.pl_size = value;
-		raspi.tx_packet.fcs = calculate_fcs(&raspi.tx_packet);
-		raspi_irq_set();
+		queue_tx_packet(RPI_PACK_PB_SRD_REPLY, value);
 		break;
 	case PB_EV_SRD_ERROR:
 		queue_nack();
