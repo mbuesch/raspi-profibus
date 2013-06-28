@@ -34,6 +34,7 @@ struct raspi_packet {
 		struct config {
 			uint8_t baudrate;	/* enum pb_phy_baud */
 			uint8_t rx_timeout_ms;
+			uint8_t biterror_checks;
 		} _packed config;
 
 		uint8_t raw_payload[255];

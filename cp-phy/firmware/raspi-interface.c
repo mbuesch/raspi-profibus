@@ -136,6 +136,7 @@ static void handle_rx(void)
 				goto error_nack;
 		}
 		pb_set_rx_timeout(raspi.rx_packet.config.rx_timeout_ms);
+		pb_enable_biterror_checks(raspi.rx_packet.config.biterror_checks);
 		queue_ack();
 		break;
 	case RPI_PACK_PB_SRD:

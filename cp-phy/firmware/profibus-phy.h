@@ -101,6 +101,8 @@ void pb_ms_tick(void);
 int8_t pb_set_baudrate(enum pb_phy_baud baudrate);
 enum pb_phy_baud pb_get_baudrate(void);
 
+void pb_enable_biterror_checks(bool enable);
+
 void pb_phy_init(void);
 void pb_phy_exit(void);
 

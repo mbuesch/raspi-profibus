@@ -89,6 +89,7 @@ struct pb_context {
 	uint8_t byte_ptr;
 	uint8_t reply_timeout;
 	uint8_t reply_timeout_count;
+	bool check_bit_errors;
 	bool tail_wait;
 	pb_notifier_t notifier;
 	enum pb_phy_baud baudrate;
@@ -139,22 +140,6 @@ static uint8_t pb_telegram_size(const struct pb_telegram *t)
 	}
 
 	return 0; /* error */
-}
-
-static uint8_t uart_rx(uint8_t *data_buf)
-{
-	uint8_t status, data;
-
-	status = UCSR0A;
-	if (!(status & (1 << RXC0)))
-		return 0;
-	data = UDR0;
-	if (data_buf)
-		*data_buf = data;
-	if (status & ((1 << FE0) | (1 << UPE0) | (1 << DOR0)))
-		return 2;
-
-	return 1;
 }
 
 static void pb_tx_next(void)
@@ -259,11 +244,18 @@ static void receive_error(void)
 ISR(USART_RX_vect)
 {
 	uint8_t *t;
-	uint8_t data;
+	uint8_t data, status, error;
 
 	mb();
 
+	status = UCSR0A;
 	data = UDR0;
+
+	error = status & ((1 << FE0) | (1 << UPE0) | (1 << DOR0));
+	if (error && profibus.check_bit_errors) {
+		receive_error();
+		goto out;
+	}
 
 	t = (uint8_t *)profibus.reply;
 	t[profibus.byte_ptr] = data;
@@ -366,6 +358,15 @@ int8_t pb_srd(const struct pb_telegram *request,
 int8_t pb_sdn(const struct pb_telegram *request)
 {
 	return pb_transfer(request, NULL, PB_SENDING_SDN);
+}
+
+void pb_enable_biterror_checks(bool enable)
+{
+	uint8_t sreg;
+
+	sreg = irq_disable_save();
+	profibus.check_bit_errors = enable;
+	irq_restore(sreg);
 }
 
 void pb_set_notifier(pb_notifier_t notifier)
@@ -471,11 +472,8 @@ void pb_phy_init(void)
 	/* Reset state */
 	pb_reset();
 	pb_set_rx_timeout(100);
+	pb_enable_biterror_checks(1);
 	profibus.notifier = NULL;
-
-	/* Drain the RX buffer */
-//	while (uart_rx(NULL))
-//		mb();
 
 	irq_restore(sreg);
 }

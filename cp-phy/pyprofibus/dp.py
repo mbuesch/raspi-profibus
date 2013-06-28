@@ -105,7 +105,7 @@ class DpTelegram_DataExchange(DpTelegram):
 class DpTelegram_DiagReq(DpTelegram):
 	def __init__(self, da, sa):
 		DpTelegram.__init__(self, da=da, sa=sa,
-			fc=FdlTelegram.FC_SRD_LO |
+			fc=FdlTelegram.FC_SRD_HI |
 			   FdlTelegram.FC_REQ,
 			dsap=DpTelegram.DSAP_SLAVE_DIAG,
 			ssap=DpTelegram.SSAP_MS0)

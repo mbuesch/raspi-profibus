@@ -59,8 +59,8 @@ class FdlTelegram(object):
 	FC_STAT_MASK	= 0x30
 	FC_SLAVE	= 0x00
 	FC_MNRDY	= 0x10
-	FC_MRDYNT	= 0x20
-	FC_NRDYTR	= 0x30
+	FC_MRDY		= 0x20
+	FC_MTR		= 0x30
 
 	def __init__(self, sd, haveLE=False, da=None, sa=None,
 		     fc=None, du=None, haveFCS=False, ed=None):
