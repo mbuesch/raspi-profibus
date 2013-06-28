@@ -43,6 +43,17 @@ class CpPhyMessage(object):
 	RPI_PACK_NACK		= 7	# Short NACK
 	__RPI_PACK_FC_MAX	= RPI_PACK_NACK
 
+	fc2name = {
+		RPI_PACK_NOP		: "NOP",
+		RPI_PACK_RESET		: "RESET",
+		RPI_PACK_SETCFG		: "SETCFG",
+		RPI_PACK_PB_SRD		: "PB_SRD",
+		RPI_PACK_PB_SRD_REPLY	: "PB_SRD_REPLY",
+		RPI_PACK_PB_SDN		: "PB_SDN",
+		RPI_PACK_ACK		: "ACK",
+		RPI_PACK_NACK		: "NACK",
+	}
+
 	def __init__(self, fc, payload=()):
 		self.fc = fc
 		self.payload = payload
@@ -73,8 +84,13 @@ class CpPhyMessage(object):
 			raise PhyError("CpPhyMessage: Invalid payload length")
 
 	def __repr__(self):
-		return "CpPhyMessage(fc=0x%02X, payload=[%s])" %\
-			(self.fc, ", ".join("0x%02X" % d for d in self.payload))
+		try:
+			fcname = self.fc2name[self.fc]
+		except KeyError:
+			fcname = "0x%02X" % self.fc
+		return "CpPhyMessage(fc=%s, payload=[%s])" %\
+			(fcname,
+			 ", ".join("0x%02X" % d for d in self.payload))
 
 class CpPhy(object):
 
@@ -171,6 +187,8 @@ class CpPhy(object):
 			reply.extend(self.spi.readbytes(payloadLen))
 		message = CpPhyMessage(0)
 		message.setRawData(reply)
+		if self.debug:
+			print("[PHY] received message:", message)
 		return message
 
 	def __sendMessage(self, message, sync=False):

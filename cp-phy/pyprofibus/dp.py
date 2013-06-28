@@ -67,8 +67,8 @@ class DpTelegram(object):
 				da=da, sa=sa, fc=self.fc,
 				du=du)
 
-	# Get Data-Unit
-	# This function is overloaded in subclasses
+	# Get Data-Unit.
+	# This function is overloaded in subclasses.
 	def getDU(self):
 		du = []
 		if self.dsap is not None:
@@ -76,6 +76,17 @@ class DpTelegram(object):
 		if self.ssap is not None:
 			du.append(self.ssap)
 		return du
+
+	# Send this telegram.
+	# phy = CpPhy instance.
+	# srd = True: SRD service. False: SDN service.
+	# sync = True: Synchronously poll PHY response.
+	def send(self, phy, srd=True, sync=False):
+		data = self.getFdlTelegram().getRawData()
+		if srd:
+			return phy.profibusSend_SRD(data, sync)
+		else:
+			return phy.profibusSend_SDN(data, sync)
 
 class DpTelegram_DataExchange(DpTelegram):
 	def __init__(self, da, sa):
