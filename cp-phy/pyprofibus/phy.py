@@ -72,6 +72,10 @@ class CpPhyMessage(object):
 		if len(self.payload) != data[1]:
 			raise PhyError("CpPhyMessage: Invalid payload length")
 
+	def __repr__(self):
+		return "CpPhyMessage(fc=0x%02X, payload=[%s])" %\
+			(self.fc, ", ".join("0x%02X" % d for d in self.payload))
+
 class CpPhy(object):
 
 	# Profibus baud-rates
@@ -107,9 +111,10 @@ class CpPhy(object):
 		12000000	: PB_PHY_BAUD_12000000,
 	}
 
-	def __init__(self, device=0, chipselect=0):
+	def __init__(self, device=0, chipselect=0, debug=False):
 		self.device = device
 		self.chipselect = chipselect
+		self.debug = debug
 
 		try:
 			# Initialize GPIOs
@@ -169,6 +174,8 @@ class CpPhy(object):
 		return message
 
 	def __sendMessage(self, message, sync=False):
+		if self.debug:
+			print("[PHY] sending message:", message)
 		data = message.getRawData()
 		self.spi.writebytes(data)
 		if not sync:

@@ -22,6 +22,46 @@ class FdlTelegram(object):
 	# End delimiter
 	ED		= 0x16
 
+	# Addresses
+	ADDRESS_MASK	= 0x7F	# Address value mask
+	SAP_PRESENT	= 0x80	# DSAP/SSAP present
+
+	# Frame Control
+	FC_REQ		= 0x40	# Request
+
+	# Request Frame Control (FC_REQ set)
+	FC_REQ_MASK	= 0x0F
+	FC_TIME_EV	= 0x00
+	FC_SDN_LO	= 0x04
+	FC_SDN_HI	= 0x06
+	FC_DDB		= 0x07
+	FC_FDL_STAT	= 0x09
+	FC_TE		= 0x0A
+	FC_CE		= 0x0B
+	FC_SRD_LO	= 0x0C
+	FC_SRD_HI	= 0x0D
+	FC_IDENT	= 0x0E
+	FC_LSAP		= 0x0F
+	FC_FCV		= 0x10
+	FC_FCB		= 0x20
+
+	# Response Frame Control (FC_REQ clear)
+	FC_ERR_MASK	= 0x0F
+	FC_OK		= 0x00
+	FC_UE		= 0x01
+	FC_RR		= 0x02
+	FC_RS		= 0x03
+	FC_DL		= 0x08
+	FC_NR		= 0x09
+	FC_DH		= 0x0A
+	FC_RDL		= 0x0C
+	FC_RDH		= 0x0D
+	FC_STAT_MASK	= 0x30
+	FC_SLAVE	= 0x00
+	FC_MNRDY	= 0x10
+	FC_MRDYNT	= 0x20
+	FC_NRDYTR	= 0x30
+
 	def __init__(self, sd, haveLE=False, da=None, sa=None,
 		     fc=None, du=None, haveFCS=False, ed=None):
 		self.sd = sd
@@ -42,7 +82,8 @@ class FdlTelegram(object):
 	def getRawData(self):
 		data = []
 		if self.haveLE:
-			data.extend([self.sd, len(self.du), len(self.du)])
+			le = 3 + len(self.du)	# DA + SA + FC + DU
+			data.extend([self.sd, le, le])
 		data.append(self.sd)
 		if self.da is not None:
 			data.append(self.da)
