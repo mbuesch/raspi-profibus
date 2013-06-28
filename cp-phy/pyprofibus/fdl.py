@@ -217,3 +217,9 @@ class FdlTelegram_token(FdlTelegram):
 class FdlTelegram_ack(FdlTelegram):
 	def __init__(self):
 		FdlTelegram.__init__(self, sd=FdlTelegram.SC)
+
+class FdlTelegram_FdlStatReq(FdlTelegram_stat0):
+	def __init__(self, da, sa):
+		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
+			fc=FdlTelegram.FC_REQ |\
+			   FdlTelegram.FC_FDL_STAT)
