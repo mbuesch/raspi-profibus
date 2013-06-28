@@ -79,14 +79,9 @@ class DpTelegram(object):
 
 	# Send this telegram.
 	# phy = CpPhy instance.
-	# srd = True: SRD service. False: SDN service.
 	# sync = True: Synchronously poll PHY response.
-	def send(self, phy, srd=True, sync=False):
-		data = self.getFdlTelegram().getRawData()
-		if srd:
-			return phy.profibusSend_SRD(data, sync)
-		else:
-			return phy.profibusSend_SDN(data, sync)
+	def send(self, phy, sync=False):
+		return self.getFdlTelegram().send(phy, sync)
 
 class DpTelegram_DataExchange(DpTelegram):
 	def __init__(self, da, sa):

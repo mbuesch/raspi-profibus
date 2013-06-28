@@ -31,15 +31,15 @@ class FdlTelegram(object):
 
 	# Request Frame Control function codes (FC_REQ set)
 	FC_REQFUNC_MASK	= 0x0F
-	FC_TIME_EV	= 0x00
+	FC_TIME_EV	= 0x00	# Time event
 	FC_SDA_LO	= 0x03	# SDA low prio
 	FC_SDN_LO	= 0x04	# SDN low prio
 	FC_SDA_HI	= 0x05	# SDA high prio
 	FC_SDN_HI	= 0x06	# SDN high prio
 	FC_DDB		= 0x07	# Req. diagnosis data
 	FC_FDL_STAT	= 0x09	# Req. FDL status
-	FC_TE		= 0x0A
-	FC_CE		= 0x0B
+	FC_TE		= 0x0A	# Actual time event
+	FC_CE		= 0x0B	# Actual counter event
 	FC_SRD_LO	= 0x0C	# SRD low prio
 	FC_SRD_HI	= 0x0D	# SRD high prio
 	FC_IDENT	= 0x0E	# Req. ident
@@ -166,6 +166,26 @@ class FdlTelegram(object):
 				raise FdlError("Invalid start delimiter")
 		except IndexError:
 			raise FdlError("Invalid FDL packet format")
+
+	# Send this telegram.
+	# phy = CpPhy instance.
+	# sync = True: Synchronously poll PHY response.
+	def send(self, phy, sync=False):
+		expectReply = False
+		if self.fc & FdlTelegram.FC_REQ:
+			func = self.fc & FdlTelegram.FC_REQFUNC_MASK
+			expectReply = func in (FdlTelegram.FC_SRD_LO,
+					       FdlTelegram.FC_SRD_HI,
+					       FdlTelegram.FC_SDA_LO,
+					       FdlTelegram.FC_SDA_HI,
+					       FdlTelegram.FC_DDB,
+					       FdlTelegram.FC_FDL_STAT,
+					       FdlTelegram.FC_IDENT,
+					       FdlTelegram.FC_LSAP)
+		if expectReply:
+			return phy.profibusSend_SRD(self.getRawData(), sync)
+		else:
+			return phy.profibusSend_SDN(self.getRawData(), sync)
 
 class FdlTelegram_var(FdlTelegram):
 	def __init__(self, da, sa, fc, du):
