@@ -24,7 +24,12 @@ class FdlTelegram(object):
 
 	# Addresses
 	ADDRESS_MASK	= 0x7F	# Address value mask
-	SAP_PRESENT	= 0x80	# DSAP/SSAP present
+	ADDRESS_EXT	= 0x80	# DAE/SAE present
+
+	# DAE/SAE (Address extension)
+	AE_EXT		= 0x80	# Further extensions present
+	AE_SEGMENT	= 0x40	# Segment address
+	AE_ADDRESS	= 0x3F	# Address extension number
 
 	# Frame Control
 	FC_REQ		= 0x40	# Request
@@ -69,12 +74,15 @@ class FdlTelegram(object):
 	FC_MTR		= 0x30	# Master, in token ring
 
 	def __init__(self, sd, haveLE=False, da=None, sa=None,
-		     fc=None, du=None, haveFCS=False, ed=None):
+		     fc=None, dae=(), sae=(), du=None,
+		     haveFCS=False, ed=None):
 		self.sd = sd
 		self.haveLE = haveLE
 		self.da = da
 		self.sa = sa
 		self.fc = fc
+		self.dae = dae
+		self.sae = sae
 		self.du = du
 		self.haveFCS = haveFCS
 		self.ed = ed
@@ -88,15 +96,19 @@ class FdlTelegram(object):
 	def getRawData(self):
 		data = []
 		if self.haveLE:
-			le = 3 + len(self.du)	# DA + SA + FC + DU
+			le = 3 + len(self.dae) + len(self.sae) + len(self.du)
 			data.extend([self.sd, le, le])
 		data.append(self.sd)
 		if self.da is not None:
-			data.append(self.da)
+			data.append((self.da | FdlTelegram.ADDRESS_EXT) if self.dae
+				    else self.da)
 		if self.sa is not None:
-			data.append(self.sa)
+			data.append((self.sa | FdlTelegram.ADDRESS_EXT) if self.sae
+				    else self.sa)
 		if self.fc is not None:
 			data.append(self.fc)
+		data.extend(self.dae)
+		data.extend(self.sae)
 		if self.du is not None:
 			data.extend(self.du)
 		if self.haveFCS:
@@ -188,25 +200,28 @@ class FdlTelegram(object):
 			return phy.profibusSend_SDN(self.getRawData(), sync)
 
 class FdlTelegram_var(FdlTelegram):
-	def __init__(self, da, sa, fc, du):
+	def __init__(self, da, sa, fc, dae, sae, du):
 		if len(du) > 246:
 			raise FdlError("Invalid data length")
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD2,
 			haveLE=True, da=da, sa=sa, fc=fc,
-			du=du, haveFCS=True, ed=FdlTelegram.ED)
+			dae=dae, sae=sae, du=du,
+			haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_stat8(FdlTelegram):
-	def __init__(self, da, sa, fc, du):
+	def __init__(self, da, sa, fc, dae, sae, du):
 		if len(du) != 8:
 			raise FdlError("Invalid data length")
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD3,
 			da=da, sa=sa, fc=fc,
-			du=du, haveFCS=True, ed=FdlTelegram.ED)
+			dae=dae, sae=sae, du=du,
+			haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_stat0(FdlTelegram):
-	def __init__(self, da, sa, fc):
+	def __init__(self, da, sa, fc, dae=(), sae=()):
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD1,
 			da=da, sa=sa, fc=fc,
+			dae=dae, sae=sae,
 			haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_token(FdlTelegram):

@@ -49,34 +49,30 @@ class DpTelegram(object):
 	def getFdlTelegram(self):
 		du = self.getDU()
 
-		da, sa = self.da, self.sa
+		dae, sae = [], []
 		if self.dsap is not None:
-			da |= FdlTelegram.SAP_PRESENT
+			dae.append(self.dsap)
 		if self.ssap is not None:
-			sa |= FdlTelegram.SAP_PRESENT
+			sae.append(self.ssap)
 
-		if len(du) == 0 and not self.forceVarTelegram:
+		le = len(du) + len(dae) + len(sae)
+		if le == 0 and not self.forceVarTelegram:
 			return FdlTelegram_stat0(
-				da=da, sa=sa, fc=self.fc)
-		elif len(du) == 8 and not self.forceVarTelegram:
+				da=self.da, sa=self.sa, fc=self.fc,
+				dae=dae, sae=sae)
+		elif le == 8 and not self.forceVarTelegram:
 			return FdlTelegram_stat8(
-				da=da, sa=sa, fc=self.fc,
-				du=du)
+				da=self.da, sa=self.sa, fc=self.fc,
+				dae=dae, sae=sae, du=du)
 		else:
 			return FdlTelegram_var(
-				da=da, sa=sa, fc=self.fc,
-				du=du)
+				da=self.da, sa=self.sa, fc=self.fc,
+				dae=dae, sae=sae, du=du)
 
 	# Get Data-Unit.
 	# This function is overloaded in subclasses.
 	def getDU(self):
-		du = []
-		#TODO SAP should be part of FDL
-		if self.dsap is not None:
-			du.append(self.dsap)
-		if self.ssap is not None:
-			du.append(self.ssap)
-		return du
+		return []
 
 	# Send this telegram.
 	# phy = CpPhy instance.
