@@ -19,6 +19,15 @@ enum pb_phy_baud {
 	PB_PHY_BAUD_12000000,
 };
 
+enum pb_phy_rtsmode {
+	PB_PHY_RTS_ALWAYS_LO,
+	PB_PHY_RTS_ALWAYS_HI,
+	PB_PHY_RTS_SENDING_HI,
+	PB_PHY_RTS_SENDING_LO,
+
+	PB_PHY_RTS_NR_MODES,
+};
+
 enum pb_sd {
 	PB_SD1	= 0x10,
 	PB_SD2	= 0x68,
@@ -100,6 +109,8 @@ void pb_ms_tick(void);
 
 int8_t pb_set_baudrate(enum pb_phy_baud baudrate);
 enum pb_phy_baud pb_get_baudrate(void);
+
+int8_t pb_set_rtsmode(enum pb_phy_rtsmode mode);
 
 void pb_enable_biterror_checks(bool enable);
 

@@ -93,6 +93,7 @@ struct pb_context {
 	bool tail_wait;
 	pb_notifier_t notifier;
 	enum pb_phy_baud baudrate;
+	enum pb_phy_rtsmode rtsmode;
 };
 
 static struct pb_context profibus;
@@ -100,10 +101,27 @@ static struct pb_context profibus;
 
 static void set_rts(bool on)
 {
-	if (on)
+	switch (profibus.rtsmode) {
+	default:
+	case PB_PHY_RTS_ALWAYS_LO:
 		RTS_PORT &= ~(1 << RTS_BIT);
-	else
+		break;
+	case PB_PHY_RTS_ALWAYS_HI:
 		RTS_PORT |= (1 << RTS_BIT);
+		break;
+	case PB_PHY_RTS_SENDING_HI:
+		if (on)
+			RTS_PORT |= (1 << RTS_BIT);
+		else
+			RTS_PORT &= ~(1 << RTS_BIT);
+		break;
+	case PB_PHY_RTS_SENDING_LO:
+		if (on)
+			RTS_PORT &= ~(1 << RTS_BIT);
+		else
+			RTS_PORT |= (1 << RTS_BIT);
+		break;
+	}
 }
 
 static void set_activity_led(bool on)
@@ -446,6 +464,21 @@ enum pb_phy_baud pb_get_baudrate(void)
 	return baudrate;
 }
 
+int8_t pb_set_rtsmode(enum pb_phy_rtsmode mode)
+{
+	uint8_t sreg;
+
+	if (mode >= PB_PHY_RTS_NR_MODES)
+		return -1;
+
+	sreg = irq_disable_save();
+	profibus.rtsmode = mode;
+	set_rts(0);
+	irq_restore(sreg);
+
+	return 0;
+}
+
 void pb_phy_init(void)
 {
 	uint8_t sreg;
@@ -454,7 +487,7 @@ void pb_phy_init(void)
 
 	/* Initialize RTS signal */
 	RTS_DDR |= (1 << RTS_BIT);
-	set_rts(0);
+	pb_set_rtsmode(PB_PHY_RTS_ALWAYS_LO);
 
 	/* Initialize activity LED */
 	LED_ACT_DDR |= (1 << LED_ACT_BIT);

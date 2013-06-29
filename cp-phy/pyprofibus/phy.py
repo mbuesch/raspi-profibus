@@ -94,7 +94,6 @@ class CpPhyMessage(object):
 			 ", ".join("0x%02X" % d for d in self.payload))
 
 class CpPhy(object):
-
 	# Profibus baud-rates
 	PB_PHY_BAUD_9600	= 0
 	PB_PHY_BAUD_19200	= 1
@@ -106,6 +105,12 @@ class CpPhy(object):
 	PB_PHY_BAUD_3000000	= 7
 	PB_PHY_BAUD_6000000	= 8
 	PB_PHY_BAUD_12000000	= 9
+
+	# RTS mode
+	PB_PHY_RTS_ALWAYS_LO	= 0
+	PB_PHY_RTS_ALWAYS_HI	= 1
+	PB_PHY_RTS_SENDING_HI	= 2
+	PB_PHY_RTS_SENDING_LO	= 3
 
 	# GPIO numbers (BCM)
 	GPIO_RESET		= 17
@@ -170,6 +175,8 @@ class CpPhy(object):
 
 			# Send a software reset
 			self.sendReset()
+			# Upload default config
+			self.profibusSetPhyConfig()
 		except:
 			GPIO.cleanup()
 			raise
@@ -215,14 +222,20 @@ class CpPhy(object):
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
 			raise PhyError("Failed to reset PHY")
 
-	def profibusSetPhyConfig(self, baudrate, rxTimeoutMs, bitErrorChecks):
+	def profibusSetPhyConfig(self, baudrate=19200,
+				 rxTimeoutMs=100,
+				 bitErrorChecks=True,
+				 rtsMode=PB_PHY_RTS_ALWAYS_LO):
 		try:
 			baudID = self.baud2id[baudrate]
 		except KeyError:
 			raise PhyError("Invalid baud-rate")
 		if rxTimeoutMs < 1 or rxTimeoutMs > 255:
 			raise PhyError("Invalid RX timeout")
-		payload = [ baudID, rxTimeoutMs, 1 if bitErrorChecks else 0 ]
+		payload = [ baudID,
+			    rxTimeoutMs,
+			    1 if bitErrorChecks else 0,
+			    rtsMode & 0xFF ]
 		message = CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG, payload)
 		reply = self.__sendMessage(message, sync=True)
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
