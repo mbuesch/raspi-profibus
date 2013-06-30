@@ -18,13 +18,16 @@ class DpTransceiver(object):
 		self.fdlTrans = fdlTrans
 
 	def poll(self, timeout=0):
-		reply = self.fdlTrans.poll(timeout)
-		#TODO interpret packet
-		return reply
+		dpTelegram = None
+		ok, fdlTelegram = self.fdlTrans.poll(timeout)
+		if ok:
+			if fdlTelegram:
+				dpTelegram = DpTelegram.fromFdlTelegram(fdlTelegram)
+		return (ok, dpTelegram)
 
 	# Send a DpTelegram.
 	def send(self, telegram):
-		self.fdlTrans.send(telegram.getFdlTelegram(), useFCB=True)
+		self.fdlTrans.send(telegram.toFdlTelegram(), useFCB=True)
 
 class DpTelegram(object):
 	# Source Service Access Point number
@@ -59,7 +62,7 @@ class DpTelegram(object):
 		self.ssap = ssap
 		self.forceVarTelegram = forceVarTelegram
 
-	def getFdlTelegram(self):
+	def toFdlTelegram(self):
 		du = self.getDU()
 
 		dae, sae = [], []
@@ -81,6 +84,10 @@ class DpTelegram(object):
 			return FdlTelegram_var(
 				da=self.da, sa=self.sa, fc=self.fc,
 				dae=dae, sae=sae, du=du)
+
+	@staticmethod
+	def fromFdlTelegram(self, fdl):
+		pass#TODO
 
 	# Get Data-Unit.
 	# This function is overloaded in subclasses.

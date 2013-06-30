@@ -7,6 +7,8 @@
 # or (at your option) any later version.
 #
 
+from pyprofibus.phy import *
+
 
 class FdlError(Exception):
 	pass
@@ -27,13 +29,22 @@ class FdlTransceiver(object):
 		self.__fcbWaitingReply = False
 
 	def poll(self, timeout=0):
+		ok, telegram = False, None
 		reply = self.phy.poll(timeout)
 		if reply is not None:
-			#TODO interpret packet
-			if self.__fcbWaitingReply:
-				if 1:#TODO positive SRD reply
+			if reply.fc == CpPhyMessage.RPI_PACK_PB_SRD_REPLY:
+				if self.__fcbWaitingReply:
 					self.__FCBnext()
-		return reply
+				telegram = FdlTelegram.fromRawData(reply.payload)
+			elif reply.fc == CpPhyMessage.RPI_PACK_ACK:
+				ok = True
+			elif reply.fc == CpPhyMessage.RPI_PACK_NACK:
+				ok = False
+				self.resetFCB()
+			else:
+				raise FdlError("Received CpPhyMessage with "
+					"unknown type (0x%02X)" % reply.fc)
+		return (ok, telegram)
 
 	# Send an FdlTelegram.
 	def send(self, telegram, useFCB=False):
@@ -141,6 +152,38 @@ class FdlTelegram(object):
 		if self.haveLE:
 			assert(self.du is not None)
 
+	def __repr__(self):
+		def byteOrNone(val):
+			if val is None:
+				return "None"
+			return "0x%02X" % val
+		def byteListOrNone(val):
+			if val is None:
+				return "None"
+			return "[%s]" % ", ".join("0x%02X" % b for b in val)
+		def boolVal(val):
+			return str(bool(val))
+		def sdVal(val):
+			try:
+				return {
+					FdlTelegram.SD1	: "SD1",
+					FdlTelegram.SD2	: "SD2",
+					FdlTelegram.SD3	: "SD3",
+					FdlTelegram.SD4	: "SD4",
+					FdlTelegram.SC	: "SC",
+				}[val]
+			except KeyError:
+				return byteOrNone(val)
+		return "FdlTelegram(sd=%s, haveLE=%s, da=%s, sa=%s, " \
+			"fc=%s, dae=%s, sae=%s, du=%s, haveFCS=%s, ed=%s)" %\
+			(sdVal(self.sd), boolVal(self.haveLE),
+			 byteOrNone(self.da), byteOrNone(self.sa),
+			 byteOrNone(self.fc),
+			 byteListOrNone(self.dae),
+			 byteListOrNone(self.sae),
+			 byteListOrNone(self.du),
+			 boolVal(self.haveFCS), byteOrNone(self.ed))
+
 	@staticmethod
 	def calcFCS(data):
 		return sum(data) & 0xFF
@@ -173,8 +216,23 @@ class FdlTelegram(object):
 			data.append(self.ed)
 		return data
 
+	# Extract address extension bytes from DU
+	@staticmethod
+	def __duExtractAe(du):
+		ae = []
+		while True:
+			if not du:
+				raise FdlError("Address extension error: Data too short")
+			aeByte = du[0]
+			ae.append(aeByte)
+			du = du[1:]
+			if not aeByte & FdlTelegram.AE_EXT:
+				break
+		return (du, ae)
+
 	@staticmethod
 	def fromRawData(data):
+		error = False
 		try:
 			sd = data[0]
 			if sd == FdlTelegram.SD1:
@@ -186,7 +244,7 @@ class FdlTelegram(object):
 				if data[4] != FdlTelegram.calcFCS(data[1:4]):
 					raise FdlError("Checksum mismatch")
 				return FdlTelegram_stat0(
-					da=data[1], sa=data[2], fc=data[3])
+					da=data[1], sa=data[2], fc=data[3], dae=[], sae=[])
 			elif sd == FdlTelegram.SD2:
 				# Variable DU
 				le = data[1]
@@ -196,15 +254,20 @@ class FdlTelegram(object):
 					raise FdlError("Invalid LE field")
 				if data[3] != sd:
 					raise FdlError("Repeated SD mismatch")
-				if data[8+le] != FdlTelegram.ED:
+				if data[5+le] != FdlTelegram.ED:
 					raise FdlError("Invalid end delimiter")
-				if data[7+le] != FdlTelegram.calcFCS(data[4:4+le+1]):
+				if data[4+le] != FdlTelegram.calcFCS(data[4:4+le]):
 					raise FdlError("Checksum mismatch")
 				du = data[7:7+(le-3)]
 				if len(du) != le - 3:
 					raise FdlError("FDL packet shorter than FE")
+				da, sa, dae, sae = data[4], data[5], [], []
+				if da & FdlTelegram.ADDRESS_EXT:
+					du, dae = FdlTelegram.__duExtractAe(du)
+				if sa & FdlTelegram.ADDRESS_EXT:
+					du, dae = FdlTelegram.__duExtractAe(du)
 				return FdlTelegram_var(
-					da=data[4], sa=data[5], fc=data[6], du=du)
+					da=da, sa=sa, fc=data[6], dae=dae, sae=sae, du=du)
 			elif sd == FdlTelegram.SD3:
 				# Static 8 byte DU
 				if len(data) != 14:
@@ -213,8 +276,14 @@ class FdlTelegram(object):
 					raise FdlError("Invalid end delimiter")
 				if data[12] != FdlTelegram.calcFCS(data[1:12]):
 					raise FdlError("Checksum mismatch")
+				du = data[4:12]
+				da, sa, dae, sae = data[1], data[2], [], []
+				if da & FdlTelegram.ADDRESS_EXT:
+					du, dae = FdlTelegram.__duExtractAe(du)
+				if sa & FdlTelegram.ADDRESS_EXT:
+					du, dae = FdlTelegram.__duExtractAe(du)
 				return FdlTelegram_stat8(
-					da=data[1], sa=data[2], fc=data[3], du=data[4:12])
+					da=da, sa=sa, fc=data[3], du=du)
 			elif sd == FdlTelegram.SD4:
 				# Token telegram
 				if len(data) != 3:
@@ -229,6 +298,8 @@ class FdlTelegram(object):
 			else:
 				raise FdlError("Invalid start delimiter")
 		except IndexError:
+			error = True
+		if error:
 			raise FdlError("Invalid FDL packet format")
 
 class FdlTelegram_var(FdlTelegram):
