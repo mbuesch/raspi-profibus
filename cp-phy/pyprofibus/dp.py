@@ -86,8 +86,23 @@ class DpTelegram(object):
 				dae=dae, sae=sae, du=du)
 
 	@staticmethod
-	def fromFdlTelegram(self, fdl):
-		pass#TODO
+	def fromFdlTelegram(fdl):
+		dsap = fdl.dae[0] if fdl.dae else None
+		ssap = fdl.sae[0] if fdl.sae else None
+
+		if not dsap:
+			if ssap:
+				raise DpError("Telegram with SSAP, but without DSAP")
+			return DpTelegram_DataExchange(da=fdl.da, sa=fdl.sa,
+				fc=fdl.fc, du=fdl.du[:])
+
+		if dsap == DpTelegram.SSAP_MS0:
+			if ssap == DpTelegram.DSAP_SLAVE_DIAG:
+				pass#TODO
+			else:
+				raise DpError("Unknown SSAP: %d" % ssap)
+		else:
+			raise DpError("Unknown DSAP: %d" % dsap)
 
 	# Get Data-Unit.
 	# This function is overloaded in subclasses.
@@ -95,13 +110,16 @@ class DpTelegram(object):
 		return []
 
 class DpTelegram_DataExchange(DpTelegram):
-	def __init__(self, da, sa):
-		DpTelegram.__init__(self, da=da, sa=sa,
-			fc=0)#TODO
-		self.du = []
+	def __init__(self, da, sa, fc=0, du=()): #FIXME FC
+		DpTelegram.__init__(self,
+			da=da, sa=sa, fc=fc)
+		self.du = du
 
 	def appendData(self, data):
-		self.du.append(data)
+		if not self.du:
+			self.du = [ data ]
+		else:
+			self.du.append(data)
 
 	def getDU(self):
 		du = DpTelegram.getDU(self)

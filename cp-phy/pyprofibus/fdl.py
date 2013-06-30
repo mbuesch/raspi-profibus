@@ -36,6 +36,8 @@ class FdlTransceiver(object):
 				if self.__fcbWaitingReply:
 					self.__FCBnext()
 				telegram = FdlTelegram.fromRawData(reply.payload)
+				#TODO check DA
+				ok = True
 			elif reply.fc == CpPhyMessage.RPI_PACK_ACK:
 				ok = True
 			elif reply.fc == CpPhyMessage.RPI_PACK_NACK:
@@ -265,7 +267,7 @@ class FdlTelegram(object):
 				if da & FdlTelegram.ADDRESS_EXT:
 					du, dae = FdlTelegram.__duExtractAe(du)
 				if sa & FdlTelegram.ADDRESS_EXT:
-					du, dae = FdlTelegram.__duExtractAe(du)
+					du, sae = FdlTelegram.__duExtractAe(du)
 				return FdlTelegram_var(
 					da=da, sa=sa, fc=data[6], dae=dae, sae=sae, du=du)
 			elif sd == FdlTelegram.SD3:
@@ -281,7 +283,7 @@ class FdlTelegram(object):
 				if da & FdlTelegram.ADDRESS_EXT:
 					du, dae = FdlTelegram.__duExtractAe(du)
 				if sa & FdlTelegram.ADDRESS_EXT:
-					du, dae = FdlTelegram.__duExtractAe(du)
+					du, sae = FdlTelegram.__duExtractAe(du)
 				return FdlTelegram_stat8(
 					da=da, sa=sa, fc=data[3], du=du)
 			elif sd == FdlTelegram.SD4:
