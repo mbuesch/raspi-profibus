@@ -13,6 +13,19 @@ from pyprofibus.fdl import *
 class DpError(Exception):
 	pass
 
+class DpTransceiver(object):
+	def __init__(self, fdlTrans):
+		self.fdlTrans = fdlTrans
+
+	def poll(self, timeout=0):
+		reply = self.fdlTrans.poll(timeout)
+		#TODO interpret packet
+		return reply
+
+	# Send a DpTelegram.
+	def send(self, telegram):
+		self.fdlTrans.send(telegram.getFdlTelegram(), useFCB=True)
+
 class DpTelegram(object):
 	# Source Service Access Point number
 	SSAP_MS2		= 50	# DPM2 to slave
@@ -73,12 +86,6 @@ class DpTelegram(object):
 	# This function is overloaded in subclasses.
 	def getDU(self):
 		return []
-
-	# Send this telegram.
-	# phy = CpPhy instance.
-	# sync = True: Synchronously poll PHY response.
-	def send(self, phy, sync=False):
-		return self.getFdlTelegram().send(phy, sync)
 
 class DpTelegram_DataExchange(DpTelegram):
 	def __init__(self, da, sa):

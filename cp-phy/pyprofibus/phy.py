@@ -186,9 +186,13 @@ class CpPhy(object):
 		self.spi = None
 		GPIO.cleanup()
 
-	def pollReply(self):
-		if not GPIO.event_detected(self.GPIO_IRQ):
-			return None
+	def poll(self, timeout=0):
+		while GPIO.event_detected(self.GPIO_IRQ):
+			if timeout == 0:
+				return None
+			if timeout > 0:
+				timeout -= 1
+			time.sleep(0.001)
 		while 1:
 			fc = self.spi.readbytes(1)[0]
 			if fc != CpPhyMessage.RPI_PACK_NOP:
@@ -204,21 +208,14 @@ class CpPhy(object):
 			print("[PHY] received message:", message)
 		return message
 
-	def __sendMessage(self, message, sync=False):
+	def __sendMessage(self, message):
 		if self.debug:
 			print("[PHY] sending message:", message)
-		data = message.getRawData()
-		self.spi.writebytes(data)
-		if not sync:
-			return
-		while 1:
-			reply = self.pollReply()
-			if reply:
-				return reply
+		self.spi.writebytes(message.getRawData())
 
 	def sendReset(self):
-		reply = self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_RESET),
-					   sync=True)
+		self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_RESET))
+		reply = self.poll(timeout=-1)
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
 			raise PhyError("Failed to reset PHY")
 
@@ -237,14 +234,15 @@ class CpPhy(object):
 			    1 if bitErrorChecks else 0,
 			    rtsMode & 0xFF ]
 		message = CpPhyMessage(CpPhyMessage.RPI_PACK_SETCFG, payload)
-		reply = self.__sendMessage(message, sync=True)
+		self.__sendMessage(message)
+		reply = self.poll(timeout=-1)
 		if reply.fc != CpPhyMessage.RPI_PACK_ACK:
 			raise PhyError("Failed to upload config")
 
-	def profibusSend_SDN(self, telegramData, sync=False):
-		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDN,
-						       telegramData), sync)
+	def profibusSend_SDN(self, telegramData):
+		self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SDN,
+						telegramData))
 
-	def profibusSend_SRD(self, telegramData, sync=False):
-		return self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SRD,
-						       telegramData), sync)
+	def profibusSend_SRD(self, telegramData):
+		self.__sendMessage(CpPhyMessage(CpPhyMessage.RPI_PACK_PB_SRD,
+						telegramData))

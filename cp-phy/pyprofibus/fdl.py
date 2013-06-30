@@ -11,6 +11,58 @@
 class FdlError(Exception):
 	pass
 
+class FdlTransceiver(object):
+	def __init__(self, phy):
+		self.phy = phy
+		self.resetFCB()
+
+	def resetFCB(self):
+		self.__fcb = 1
+		self.__fcv = 0
+		self.__fcbWaitingReply = False
+
+	def __FCBnext(self):
+		self.__fcb ^= 1
+		self.__fcv = 1
+		self.__fcbWaitingReply = False
+
+	def poll(self, timeout=0):
+		reply = self.phy.poll(timeout)
+		if reply is not None:
+			#TODO interpret packet
+			if self.__fcbWaitingReply:
+				if 1:#TODO positive SRD reply
+					self.__FCBnext()
+		return reply
+
+	# Send an FdlTelegram.
+	def send(self, telegram, useFCB=False):
+		srd = False
+		if telegram.fc & FdlTelegram.FC_REQ:
+			func = telegram.fc & FdlTelegram.FC_REQFUNC_MASK
+			srd = func in (FdlTelegram.FC_SRD_LO,
+				       FdlTelegram.FC_SRD_HI,
+				       FdlTelegram.FC_SDA_LO,
+				       FdlTelegram.FC_SDA_HI,
+				       FdlTelegram.FC_DDB,
+				       FdlTelegram.FC_FDL_STAT,
+				       FdlTelegram.FC_IDENT,
+				       FdlTelegram.FC_LSAP)
+			telegram.fc &= ~(FdlTelegram.FC_FCB | FdlTelegram.FC_FCV)
+			if useFCB:
+				if self.__fcb:
+					telegram.fc |= FdlTelegram.FC_FCB
+				if self.__fcv:
+					telegram.fc |= FdlTelegram.FC_FCV
+				if srd:
+					self.__fcbWaitingReply = True
+				else:
+					self.__FCBnext()
+		if srd:
+			self.phy.profibusSend_SRD(telegram.getRawData())
+		else:
+			self.phy.profibusSend_SDN(telegram.getRawData())
+
 class FdlTelegram(object):
 	# Start delimiter
 	SD1		= 0x10	# No DU
@@ -178,26 +230,6 @@ class FdlTelegram(object):
 				raise FdlError("Invalid start delimiter")
 		except IndexError:
 			raise FdlError("Invalid FDL packet format")
-
-	# Send this telegram.
-	# phy = CpPhy instance.
-	# sync = True: Synchronously poll PHY response.
-	def send(self, phy, sync=False):
-		expectReply = False
-		if self.fc & FdlTelegram.FC_REQ:
-			func = self.fc & FdlTelegram.FC_REQFUNC_MASK
-			expectReply = func in (FdlTelegram.FC_SRD_LO,
-					       FdlTelegram.FC_SRD_HI,
-					       FdlTelegram.FC_SDA_LO,
-					       FdlTelegram.FC_SDA_HI,
-					       FdlTelegram.FC_DDB,
-					       FdlTelegram.FC_FDL_STAT,
-					       FdlTelegram.FC_IDENT,
-					       FdlTelegram.FC_LSAP)
-		if expectReply:
-			return phy.profibusSend_SRD(self.getRawData(), sync)
-		else:
-			return phy.profibusSend_SDN(self.getRawData(), sync)
 
 class FdlTelegram_var(FdlTelegram):
 	def __init__(self, da, sa, fc, dae, sae, du):
