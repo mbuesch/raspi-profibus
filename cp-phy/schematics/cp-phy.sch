@@ -1,4 +1,4 @@
-EESchema Schematic File Version 2  date Fri 21 Jun 2013 05:42:05 PM CEST
+EESchema Schematic File Version 2  date Sun 30 Jun 2013 06:22:43 PM CEST
 LIBS:power
 LIBS:device
 LIBS:transistors
@@ -31,13 +31,14 @@ LIBS:contrib
 LIBS:valves
 LIBS:raspberrypi
 LIBS:rs485-rs232
+LIBS:cp-phy-cache
 EELAYER 25  0
 EELAYER END
 $Descr A4 11700 8267
 encoding utf-8
 Sheet 1 1
 Title "Raspberry Pi / Profibus DP / CP-PHY"
-Date "21 jun 2013"
+Date "30 jun 2013"
 Rev "1.0"
 Comp "Michael Buesch <m@bues.ch>"
 Comment1 ""
@@ -432,9 +433,9 @@ $EndComp
 Text Label 3400 6200 2    40   ~ 0
 PROFIBUS_DP
 Text Label 4400 6050 2    40   ~ 0
-PB_LTG_B
+PB_DATA_N
 Text Label 4400 5950 2    40   ~ 0
-PB_LTG_A
+PB_DATA_P
 Entry Wire Line
 	3900 6150 4000 6050
 Entry Wire Line
@@ -444,9 +445,9 @@ Entry Wire Line
 Entry Wire Line
 	2450 6500 2550 6400
 Text Label 2050 6500 0    40   ~ 0
-PB_LTG_B
+PB_DATA_P
 Text Label 2050 6600 0    40   ~ 0
-PB_LTG_A
+PB_DATA_N
 Text Label 6450 6550 2    40   ~ 0
 RS232_RTS
 Text Label 6450 6150 2    40   ~ 0
