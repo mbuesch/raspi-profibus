@@ -21,9 +21,13 @@ class DpTransceiver(object):
 	def poll(self, timeout=0):
 		dpTelegram = None
 		ok, fdlTelegram = self.fdlTrans.poll(timeout)
-		if ok:
-			if fdlTelegram:
+		if ok and fdlTelegram:
+			if fdlTelegram.sd in (FdlTelegram.SD1,
+					      FdlTelegram.SD2,
+					      FdlTelegram.SD3):
 				dpTelegram = DpTelegram.fromFdlTelegram(fdlTelegram)
+			elif fdlTelegram.sd != FdlTelegram.SC:
+				ok = False
 		return (ok, dpTelegram)
 
 	# Send a DpTelegram.
@@ -51,8 +55,7 @@ class DpTelegram(object):
 	DSAP_SET_PRM		= 61
 	DSAP_CHK_CFG		= 62
 
-	def __init__(self, da, sa, fc, dsap=None, ssap=None,
-		     forceVarTelegram=False):
+	def __init__(self, da, sa, fc, dsap=None, ssap=None):
 		if da < 0 or da > 127 or\
 		   sa < 0 or sa > 126:
 			raise DpError("Invalid DA or SA")
@@ -61,15 +64,13 @@ class DpTelegram(object):
 		self.fc = fc
 		self.dsap = dsap
 		self.ssap = ssap
-		self.forceVarTelegram = forceVarTelegram
 
 	def __repr__(self):
 		return "DpTelegram(da=%s, sa=%s, fc=%s, " \
-			"dsap=%s, ssap=%s, forceVarTelegram=%s)" %\
+			"dsap=%s, ssap=%s)" %\
 			(intToHex(self.da), intToHex(self.sa),
 			 intToHex(self.fc), intToHex(self.dsap),
-			 intToHex(self.ssap),
-			 boolToStr(self.forceVarTelegram))
+			 intToHex(self.ssap))
 
 	def toFdlTelegram(self):
 		du = self.getDU()
@@ -81,11 +82,10 @@ class DpTelegram(object):
 			sae.append(self.ssap)
 
 		le = len(du) + len(dae) + len(sae)
-		if le == 0 and not self.forceVarTelegram:
+		if le == 0:
 			return FdlTelegram_stat0(
-				da=self.da, sa=self.sa, fc=self.fc,
-				dae=dae, sae=sae)
-		elif le == 8 and not self.forceVarTelegram:
+				da=self.da, sa=self.sa, fc=self.fc)
+		elif le == 8:
 			return FdlTelegram_stat8(
 				da=self.da, sa=self.sa, fc=self.fc,
 				dae=dae, sae=sae, du=du)
@@ -109,7 +109,7 @@ class DpTelegram(object):
 
 		if dsap == DpTelegram.SSAP_MS0:
 			if ssap == DpTelegram.DSAP_SLAVE_DIAG:
-				return DpTelegram_SlaveDiag.fromFdlTelegram(fdl)
+				return DpTelegram_SlaveDiag_Con.fromFdlTelegram(fdl)
 			else:
 				raise DpError("Unknown SSAP: %d" % ssap)
 		else:
@@ -137,15 +137,16 @@ class DpTelegram_DataExchange(DpTelegram):
 		du.extend(self.du)
 		return du
 
-class DpTelegram_DiagReq(DpTelegram):
-	def __init__(self, da, sa):
-		DpTelegram.__init__(self, da=da, sa=sa,
-			fc=FdlTelegram.FC_SRD_HI |
-			   FdlTelegram.FC_REQ,
-			dsap=DpTelegram.DSAP_SLAVE_DIAG,
-			ssap=DpTelegram.SSAP_MS0)
+class DpTelegram_SlaveDiag_Req(DpTelegram):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     dsap=DpTelegram.DSAP_SLAVE_DIAG,
+		     ssap=DpTelegram.SSAP_MS0):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+				    dsap=dsap, ssap=ssap)
 
-class DpTelegram_SlaveDiag(DpTelegram):
+class DpTelegram_SlaveDiag_Con(DpTelegram):
 	# Flags byte 0
 	B0_STANOEX		= 0x01	# Station_Non_Existent
 	B0_STANORDY		= 0x02	# Station_Not_Reay
@@ -181,7 +182,7 @@ class DpTelegram_SlaveDiag(DpTelegram):
 		self.identNumber = 0
 
 	def __repr__(self):
-		return "DpTelegram_SlaveDiag(da=%s, sa=%s, fc=%s, " \
+		return "DpTelegram_SlaveDiag_Con(da=%s, sa=%s, fc=%s, " \
 			"dsap=%s, ssap=%s) => " \
 			"(b0=%s, b1=%s, b2=%s, masterAddr=%s, identNumber=%s)" %\
 			(intToHex(self.da), intToHex(self.sa),
@@ -192,10 +193,10 @@ class DpTelegram_SlaveDiag(DpTelegram):
 
 	@staticmethod
 	def fromFdlTelegram(fdl):
-		dp = DpTelegram_SlaveDiag(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
-					  sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
-					  fc=fdl.fc,
-					  dsap=fdl.dae[0], ssap=fdl.sae[0])
+		dp = DpTelegram_SlaveDiag_Con(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
+					      sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+					      fc=fdl.fc,
+					      dsap=fdl.dae[0], ssap=fdl.sae[0])
 		try:
 			dp.b0 = fdl.du[0]
 			dp.b1 = fdl.du[1]
@@ -212,16 +213,54 @@ class DpTelegram_SlaveDiag(DpTelegram):
 			(self.identNumber >> 8) & 0xFF,
 			self.identNumber & 0xFF]
 
-class DpTelegram_SetPrm(DpTelegram):
-	def __init__(self, da, sa):
-		DpTelegram.__init__(self, da=da, sa=sa,
-			fc=FdlTelegram.FC_SRD_LO |
-			   FdlTelegram.FC_REQ,
+class DpTelegram_SetPrm_Req(DpTelegram):
+	# Station status
+	STA_WD			= 0x08	# WD_On
+	STA_FREEZE		= 0x10	# Freeze_Req
+	STA_SYNC		= 0x20	# Sync_Req
+	STA_UNLOCK		= 0x40	# Unlock_Req
+	STA_LOCK		= 0x80	# Lock_Req
+
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
 			dsap=DpTelegram.DSAP_SET_PRM,
-			ssap=DpTelegram.SSAP_MS0)
+			ssap=DpTelegram.SSAP_MS0):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+				    dsap=dsap, ssap=ssap)
+		self.stationStatus = 0		# Station_Status
+		self.wdFact1 = 1		# WD_Fact_1
+		self.wdFact2 = 1		# WD_Fact_2
+		self.minTSDR = 0		# min_Tsdr (0 = no change)
+		self.identNumber = 0		# Ident_Number
+		self.groupIdent = 0		# Group_Ident (Lock_Req must be set)
+		self.userPrmData = []		# User_Prm_Data
+
+	def __repr__(self):
+		return "DpTelegram_SetPrm_Req(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s) => " \
+			"(stationStatus=%s, wdFact1=%s, wdFact2=%s, " \
+			"minTSDR=%s, identNumber=%s, groupIdent=%s " \
+			"userPrmData=%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intToHex(self.dsap), intToHex(self.ssap),
+			 intToHex(self.stationStatus),
+			 intToHex(self.wdFact1), intToHex(self.wdFact2),
+			 intToHex(self.minTSDR), intToHex(self.identNumber),
+			 intToHex(self.groupIdent),
+			 intListToHex(self.userPrmData))
+
+	@staticmethod
+	def fromFdlTelegram(fdl):
 		pass#TODO
 
 	def getDU(self):
-		du = DpTelegram.getDU(self)
-		pass#TODO
+		du = [self.stationStatus,
+		      self.wdFact1, self.wdFact2,
+		      self.minTSDR,
+		      (self.identNumber >> 8) & 0xFF,
+		      self.identNumber & 0xFF,
+		      self.groupIdent]
+		du.extend(self.userPrmData)
 		return du

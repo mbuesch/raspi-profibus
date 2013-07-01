@@ -177,6 +177,10 @@ class FdlTelegram(object):
 			 intListToHex(self.du),
 			 boolToStr(self.haveFCS), intToHex(self.ed))
 
+	# Get real length of DU field
+	def getRealDuLen(self):
+		return len(self.du) + len(self.dae) + len(self.sae)
+
 	@staticmethod
 	def calcFCS(data):
 		return sum(data) & 0xFF
@@ -184,7 +188,7 @@ class FdlTelegram(object):
 	def getRawData(self):
 		data = []
 		if self.haveLE:
-			le = 3 + len(self.dae) + len(self.sae) + len(self.du)
+			le = 3 + self.getRealDuLen()
 			data.extend([self.sd, le, le])
 		data.append(self.sd)
 		if self.da is not None:
@@ -297,27 +301,26 @@ class FdlTelegram(object):
 
 class FdlTelegram_var(FdlTelegram):
 	def __init__(self, da, sa, fc, dae, sae, du):
-		if len(du) > 246:
-			raise FdlError("Invalid data length")
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD2,
 			haveLE=True, da=da, sa=sa, fc=fc,
 			dae=dae, sae=sae, du=du,
 			haveFCS=True, ed=FdlTelegram.ED)
+		if self.getRealDuLen() > 246:
+			raise FdlError("Invalid data length (> 246)")
 
 class FdlTelegram_stat8(FdlTelegram):
 	def __init__(self, da, sa, fc, dae, sae, du):
-		if len(du) != 8:
-			raise FdlError("Invalid data length")
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD3,
 			da=da, sa=sa, fc=fc,
 			dae=dae, sae=sae, du=du,
 			haveFCS=True, ed=FdlTelegram.ED)
+		if self.getRealDuLen() != 8:
+			raise FdlError("Invalid data length (!= 8)")
 
 class FdlTelegram_stat0(FdlTelegram):
-	def __init__(self, da, sa, fc, dae=(), sae=()):
+	def __init__(self, da, sa, fc):
 		FdlTelegram.__init__(self, sd=FdlTelegram.SD1,
 			da=da, sa=sa, fc=fc,
-			dae=dae, sae=sae,
 			haveFCS=True, ed=FdlTelegram.ED)
 
 class FdlTelegram_token(FdlTelegram):
@@ -329,19 +332,19 @@ class FdlTelegram_ack(FdlTelegram):
 	def __init__(self):
 		FdlTelegram.__init__(self, sd=FdlTelegram.SC)
 
-class FdlTelegram_FdlStatReq(FdlTelegram_stat0):
+class FdlTelegram_FdlStat_Req(FdlTelegram_stat0):
 	def __init__(self, da, sa):
 		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
 			fc=FdlTelegram.FC_REQ |\
 			   FdlTelegram.FC_FDL_STAT)
 
-class FdlTelegram_IdentReq(FdlTelegram_stat0):
+class FdlTelegram_Ident_Req(FdlTelegram_stat0):
 	def __init__(self, da, sa):
 		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
 			fc=FdlTelegram.FC_REQ |\
 			   FdlTelegram.FC_IDENT)
 
-class FdlTelegram_LsapReq(FdlTelegram_stat0):
+class FdlTelegram_Lsap_Req(FdlTelegram_stat0):
 	def __init__(self, da, sa):
 		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
 			fc=FdlTelegram.FC_REQ |\
