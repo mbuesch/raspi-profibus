@@ -8,6 +8,7 @@
 #
 
 from pyprofibus.phy import *
+from pyprofibus.util import *
 
 
 class FdlError(Exception):
@@ -155,16 +156,6 @@ class FdlTelegram(object):
 			assert(self.du is not None)
 
 	def __repr__(self):
-		def byteOrNone(val):
-			if val is None:
-				return "None"
-			return "0x%02X" % val
-		def byteListOrNone(val):
-			if val is None:
-				return "None"
-			return "[%s]" % ", ".join("0x%02X" % b for b in val)
-		def boolVal(val):
-			return str(bool(val))
 		def sdVal(val):
 			try:
 				return {
@@ -175,16 +166,16 @@ class FdlTelegram(object):
 					FdlTelegram.SC	: "SC",
 				}[val]
 			except KeyError:
-				return byteOrNone(val)
+				return intToHex(val)
 		return "FdlTelegram(sd=%s, haveLE=%s, da=%s, sa=%s, " \
 			"fc=%s, dae=%s, sae=%s, du=%s, haveFCS=%s, ed=%s)" %\
-			(sdVal(self.sd), boolVal(self.haveLE),
-			 byteOrNone(self.da), byteOrNone(self.sa),
-			 byteOrNone(self.fc),
-			 byteListOrNone(self.dae),
-			 byteListOrNone(self.sae),
-			 byteListOrNone(self.du),
-			 boolVal(self.haveFCS), byteOrNone(self.ed))
+			(sdVal(self.sd), boolToStr(self.haveLE),
+			 intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intListToHex(self.dae),
+			 intListToHex(self.sae),
+			 intListToHex(self.du),
+			 boolToStr(self.haveFCS), intToHex(self.ed))
 
 	@staticmethod
 	def calcFCS(data):

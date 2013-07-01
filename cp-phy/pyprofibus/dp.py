@@ -8,6 +8,7 @@
 #
 
 from pyprofibus.fdl import *
+from pyprofibus.util import *
 
 
 class DpError(Exception):
@@ -62,6 +63,14 @@ class DpTelegram(object):
 		self.ssap = ssap
 		self.forceVarTelegram = forceVarTelegram
 
+	def __repr__(self):
+		return "DpTelegram(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s, forceVarTelegram=%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc), intToHex(self.dsap),
+			 intToHex(self.ssap),
+			 boolToStr(self.forceVarTelegram))
+
 	def toFdlTelegram(self):
 		du = self.getDU()
 
@@ -95,10 +104,12 @@ class DpTelegram(object):
 				raise DpError("Telegram with SSAP, but without DSAP")
 			return DpTelegram_DataExchange(da=fdl.da, sa=fdl.sa,
 				fc=fdl.fc, du=fdl.du[:])
+		if not ssap:
+			raise DpError("Telegram with DSAP, but without SSAP")
 
 		if dsap == DpTelegram.SSAP_MS0:
 			if ssap == DpTelegram.DSAP_SLAVE_DIAG:
-				pass#TODO
+				return DpTelegram_SlaveDiag.fromFdlTelegram(fdl)
 			else:
 				raise DpError("Unknown SSAP: %d" % ssap)
 		else:
@@ -133,6 +144,73 @@ class DpTelegram_DiagReq(DpTelegram):
 			   FdlTelegram.FC_REQ,
 			dsap=DpTelegram.DSAP_SLAVE_DIAG,
 			ssap=DpTelegram.SSAP_MS0)
+
+class DpTelegram_SlaveDiag(DpTelegram):
+	# Flags byte 0
+	B0_STANOEX		= 0x01	# Station_Non_Existent
+	B0_STANORDY		= 0x02	# Station_Not_Reay
+	B0_CFGFLT		= 0x04	# Cfg_Fault
+	B0_EXTDIAG		= 0x08	# Ext_Diag
+	B0_NOSUPP		= 0x10	# Not_Supported
+	B0_INVALSR		= 0x20	# Invalid_Slave_Response
+	B0_PRMFLT		= 0x40	# Prm_Fault
+	B0_MLOCK		= 0x80	# Master_Lock
+
+	# Flags byte 1
+	B1_PRMREQ		= 0x01	# Prm_Req
+	B1_SDIAG		= 0x02	# Stat_Diag
+	B1_ONE			= 0x04	# Always 1
+	B1_WD			= 0x08	# Wd_On
+	B1_FREEZE		= 0x10	# Freeze_Mode
+	B1_SYNC			= 0x20	# Sync_Mode
+	B1_RES			= 0x40	# Reserved
+	B1_DEAC			= 0x80	# Deactivated
+
+	# Flags byte 2
+	B2_EXTDIAGOVR		= 0x80	# Ext_Diag_Overflow
+
+	def __init__(self, da, sa, fc=FdlTelegram.FC_DL,
+		     dsap=DpTelegram.SSAP_MS0,
+		     ssap=DpTelegram.DSAP_SLAVE_DIAG):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+			dsap=dsap, ssap=ssap)
+		self.b0 = 0
+		self.b1 = 0
+		self.b2 = 0
+		self.masterAddr = 255
+		self.identNumber = 0
+
+	def __repr__(self):
+		return "DpTelegram_SlaveDiag(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s) => " \
+			"(b0=%s, b1=%s, b2=%s, masterAddr=%s, identNumber=%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intToHex(self.dsap), intToHex(self.ssap),
+			 intToHex(self.b0), intToHex(self.b1), intToHex(self.b2),
+			 intToHex(self.masterAddr), intToHex(self.identNumber))
+
+	@staticmethod
+	def fromFdlTelegram(fdl):
+		dp = DpTelegram_SlaveDiag(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
+					  sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+					  fc=fdl.fc,
+					  dsap=fdl.dae[0], ssap=fdl.sae[0])
+		try:
+			dp.b0 = fdl.du[0]
+			dp.b1 = fdl.du[1]
+			dp.b2 = fdl.du[2]
+			dp.masterAddr = fdl.du[3]
+			dp.identNumber = (fdl.du[4] << 8) | fdl.du[5]
+		except IndexError:
+			raise DpError("Invalid Slave_Diag telegram format")
+		return dp
+
+	def getDU(self):
+		return [self.b0, self.b1, self.b2,
+			self.masterAddr,
+			(self.identNumber >> 8) & 0xFF,
+			self.identNumber & 0xFF]
 
 class DpTelegram_SetPrm(DpTelegram):
 	def __init__(self, da, sa):
