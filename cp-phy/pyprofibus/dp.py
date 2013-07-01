@@ -94,8 +94,8 @@ class DpTelegram(object):
 				da=self.da, sa=self.sa, fc=self.fc,
 				dae=dae, sae=sae, du=du)
 
-	@staticmethod
-	def fromFdlTelegram(fdl):
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
 		dsap = fdl.dae[0] if fdl.dae else None
 		ssap = fdl.sae[0] if fdl.sae else None
 
@@ -110,6 +110,8 @@ class DpTelegram(object):
 		if dsap == DpTelegram.SSAP_MS0:
 			if ssap == DpTelegram.DSAP_SLAVE_DIAG:
 				return DpTelegram_SlaveDiag_Con.fromFdlTelegram(fdl)
+			elif ssap == DpTelegram.DSAP_GET_CFG:
+				return DpTelegram_GetCfg_Con.fromFdlTelegram(fdl)
 			else:
 				raise DpError("Unknown SSAP: %d" % ssap)
 		else:
@@ -191,12 +193,12 @@ class DpTelegram_SlaveDiag_Con(DpTelegram):
 			 intToHex(self.b0), intToHex(self.b1), intToHex(self.b2),
 			 intToHex(self.masterAddr), intToHex(self.identNumber))
 
-	@staticmethod
-	def fromFdlTelegram(fdl):
-		dp = DpTelegram_SlaveDiag_Con(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
-					      sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
-					      fc=fdl.fc,
-					      dsap=fdl.dae[0], ssap=fdl.sae[0])
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		dp = cls(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
+			 sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+			 fc=fdl.fc,
+			 dsap=fdl.dae[0], ssap=fdl.sae[0])
 		try:
 			dp.b0 = fdl.du[0]
 			dp.b1 = fdl.du[1]
@@ -224,8 +226,8 @@ class DpTelegram_SetPrm_Req(DpTelegram):
 	def __init__(self, da, sa,
 		     fc=FdlTelegram.FC_SRD_HI |
 		        FdlTelegram.FC_REQ,
-			dsap=DpTelegram.DSAP_SET_PRM,
-			ssap=DpTelegram.SSAP_MS0):
+		     dsap=DpTelegram.DSAP_SET_PRM,
+		     ssap=DpTelegram.SSAP_MS0):
 		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
 				    dsap=dsap, ssap=ssap)
 		self.stationStatus = 0		# Station_Status
@@ -251,8 +253,8 @@ class DpTelegram_SetPrm_Req(DpTelegram):
 			 intToHex(self.groupIdent),
 			 intListToHex(self.userPrmData))
 
-	@staticmethod
-	def fromFdlTelegram(fdl):
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
 		pass#TODO
 
 	def getDU(self):
@@ -264,3 +266,120 @@ class DpTelegram_SetPrm_Req(DpTelegram):
 		      self.groupIdent]
 		du.extend(self.userPrmData)
 		return du
+
+class DpTelegram_ChkCfg_Req(DpTelegram):
+	class CfgDataElement(object):
+		# Identifier
+		ID_LEN_MASK		= 0x0F	# Length of data
+		ID_TYPE_MASK		= 0x30
+		ID_TYPE_SPEC		= 0x00	# Specific formats
+		ID_TYPE_IN		= 0x10	# Input
+		ID_TYPE_OUT		= 0x20	# Output
+		ID_TYPE_INOUT		= 0x30	# Input/output
+		ID_LEN_WORDS		= 0x40	# Word structure
+		ID_CON_WHOLE		= 0x80	# Consistency over whole length
+
+		# Special identifier
+		ID_SPEC_MASK		= 0xC0
+		ID_SPEC_FREE		= 0x00	# Free place
+		ID_SPEC_IN		= 0x40	# 1 byte for input follows
+		ID_SPEC_OUT		= 0x80	# 1 byte for output follows
+		ID_SPEC_INOUT		= 0xC0	# 1 b for output and 1 b for input follows
+
+		# Length byte
+		LEN_COUNT		= 0x3F	# Length of inputs/outputs
+		LEN_WORDS		= 0x40	# Word structure
+		LEN_CON_WHOLE		= 0x80	# Consistency over whole length
+
+		def __init__(self, identifier=0, lengthBytes=()):
+			self.identifier = identifier
+			self.lengthBytes = lengthBytes
+	
+		def __repr__(self):
+			return "CfgDataElement(identifier=%s, length=%s)" %\
+				(intToHex(self.identifier),
+				 intListToHex(self.lengthBytes))
+
+		def getDU(self):
+			du = [ self.identifier ]
+			du.extend(self.lengthBytes)
+			return du
+
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     dsap=DpTelegram.DSAP_CHK_CFG,
+		     ssap=DpTelegram.SSAP_MS0):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+				    dsap=dsap, ssap=ssap)
+		self.cfgData = []	# Cfg_Data element
+
+	def __repr__(self):
+		return "DpTelegram_ChkCfg_Req(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s) => " \
+			"(%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intToHex(self.dsap), intToHex(self.ssap),
+			 ", ".join(str(d) for d in self.cfgData))
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		dp = cls(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
+			 sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+			 fc=fdl.fc,
+			 dsap=fdl.dae[0], ssap=fdl.sae[0])
+		try:
+			du = fdl.du
+			while du:
+				iden = du[0]
+				idenType = iden & cls.CfgDataElement.ID_TYPE_MASK
+				if idenType == cls.CfgDataElement.ID_TYPE_SPEC:
+					nrBytes = iden & cls.CfgDataElement.ID_LEN_MASK
+					lengthBytes = du[1:1+nrBytes]
+					if len(lengthBytes) != nrBytes:
+						raise DpError("Invalid Config identifier")
+					cfgData = cls.CfgDataElement(identifier=iden,
+						lengthBytes=lengthBytes)
+					du = du[1+nrBytes:]
+				else:
+					cfgData = cls.CfgDataElement(identifier=iden)
+					du = du[1:]
+				dp.cfgData.append(cfgData)
+		except IndexError:
+			raise DpError("Invalid Config telegram format")
+		return dp
+
+	def getDU(self):
+		du = []
+		for cfgData in self.cfgData:
+			du.extend(cfgData.getDU())
+		return du
+
+class DpTelegram_GetCfg_Req(DpTelegram):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     dsap=DpTelegram.DSAP_GET_CFG,
+		     ssap=DpTelegram.SSAP_MS0):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+				    dsap=dsap, ssap=ssap)
+
+	def __repr__(self):
+		return "DpTelegram_ChkCfg_Req(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intToHex(self.dsap), intToHex(self.ssap))
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		pass#TODO
+
+class DpTelegram_GetCfg_Con(DpTelegram_ChkCfg_Req):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_DL,
+		     dsap=DpTelegram.SSAP_MS0,
+		     ssap=DpTelegram.DSAP_GET_CFG):
+		DpTelegram_ChkCfg_Req.__init__(self, da=da, sa=sa,
+			fc=fc, dsap=dsap, ssap=ssap)
