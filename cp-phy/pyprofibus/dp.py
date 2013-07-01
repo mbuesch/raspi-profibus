@@ -230,13 +230,13 @@ class DpTelegram_SetPrm_Req(DpTelegram):
 		     ssap=DpTelegram.SSAP_MS0):
 		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
 				    dsap=dsap, ssap=ssap)
-		self.stationStatus = 0		# Station_Status
-		self.wdFact1 = 1		# WD_Fact_1
-		self.wdFact2 = 1		# WD_Fact_2
-		self.minTSDR = 0		# min_Tsdr (0 = no change)
-		self.identNumber = 0		# Ident_Number
-		self.groupIdent = 0		# Group_Ident (Lock_Req must be set)
-		self.userPrmData = []		# User_Prm_Data
+		self.stationStatus = self.STA_LOCK	# Station_Status
+		self.wdFact1 = 1			# WD_Fact_1
+		self.wdFact2 = 1			# WD_Fact_2
+		self.minTSDR = 0			# min_Tsdr (0 = no change)
+		self.identNumber = 0			# Ident_Number
+		self.groupIdent = 0			# Group_Ident (Lock_Req must be set)
+		self.userPrmData = []			# User_Prm_Data
 
 	def __repr__(self):
 		return "DpTelegram_SetPrm_Req(da=%s, sa=%s, fc=%s, " \
