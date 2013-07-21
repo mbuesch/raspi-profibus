@@ -21,6 +21,10 @@ class FdlTransceiver(AbstractTransceiver):
 		self.phy = phy
 		self.resetFCB()
 		self.enableFCB(False)
+		self.setRXFilter(None)
+
+	def setRXFilter(self, newFilter):
+		self.__rxFilter = list(newFilter[:]) if newFilter else []
 
 	def resetFCB(self):
 		self.__fcb = 1
@@ -35,16 +39,24 @@ class FdlTransceiver(AbstractTransceiver):
 		self.__fcv = 1
 		self.__fcbWaitingReply = False
 
+	def __checkRXFilter(self, telegram):
+		if telegram.da is None:
+			# Accept telegrams without DA field.
+			return True
+		da = telegram.da & FdlTelegram.ADDRESS_MASK
+		# Accept the packet, if it's in the RX filter.
+		return da in self.__rxFilter
+
 	def poll(self, timeout=0):
 		ok, telegram = False, None
 		reply = self.phy.poll(timeout)
 		if reply is not None:
 			if reply.fc == CpPhyMessage.RPI_PACK_PB_SRD_REPLY:
-				if self.__fcbWaitingReply:
-					self.__FCBnext()
 				telegram = FdlTelegram.fromRawData(reply.payload)
-				#TODO check DA
-				ok = True
+				if self.__checkRXFilter(telegram):
+					if self.__fcbWaitingReply:
+						self.__FCBnext()
+					ok = True
 			elif reply.fc == CpPhyMessage.RPI_PACK_ACK:
 				ok = True
 			elif reply.fc == CpPhyMessage.RPI_PACK_NACK:
@@ -97,6 +109,8 @@ class FdlTelegram(object):
 	# Addresses
 	ADDRESS_MASK	= 0x7F	# Address value mask
 	ADDRESS_EXT	= 0x80	# DAE/SAE present
+
+	ADDRESS_MCAST	= 127	# Multicast/broadcast address
 
 	# DAE/SAE (Address extension)
 	AE_EXT		= 0x80	# Further extensions present

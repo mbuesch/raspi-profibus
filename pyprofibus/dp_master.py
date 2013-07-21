@@ -122,6 +122,11 @@ class DpMaster(object):
 			self.__initializeSlave(self.slaveDescs[slaveAddr])
 
 	def initialize(self):
+		# Initialize the RX filter
+		self.fdlTrans.setRXFilter([self.masterAddr,
+					   FdlTelegram.ADDRESS_MCAST])
+
+		# Initialize the registered slaves
 		self.__initializeSlaves()
 
 class DPM1(DpMaster):
