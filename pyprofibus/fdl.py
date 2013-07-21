@@ -237,7 +237,7 @@ class FdlTelegram(object):
 	@staticmethod
 	def __duExtractAe(du):
 		ae = []
-		while True:
+		for i in range(2):
 			if not du:
 				raise FdlError("Address extension error: Data too short")
 			aeByte = du[0]
