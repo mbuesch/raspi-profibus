@@ -10,6 +10,8 @@
 import sys
 import time
 
+from pyprofibus.util import *
+
 try:
 	from spidev import SpiDev
 except ImportError:
@@ -186,17 +188,21 @@ class CpPhy(object):
 		self.spi = None
 		GPIO.cleanup()
 
+	# Poll for received packet.
+	# timeout => In seconds. 0 = none, Negative = unlimited.
 	def poll(self, timeout=0):
+		limit = TimeLimited(timeout)
 		while GPIO.event_detected(self.GPIO_IRQ):
-			if timeout == 0:
+			if limit.exceed():
 				return None
-			if timeout > 0:
-				timeout -= 1
-			time.sleep(0.001)
-		while 1:
+			limit.sleep(0.001)
+		limit.add(0.5)
+		while not limit.exceed():
 			fc = self.spi.readbytes(1)[0]
 			if fc != CpPhyMessage.RPI_PACK_NOP:
 				break
+		else:
+			return None
 		reply = [ fc ]
 		reply.extend(self.spi.readbytes(CpPhyMessage.RASPI_PACK_HDR_LEN - 1))
 		payloadLen = reply[1] & 0xFF

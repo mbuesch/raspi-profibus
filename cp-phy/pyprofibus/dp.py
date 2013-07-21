@@ -9,13 +9,15 @@
 
 from pyprofibus.fdl import *
 from pyprofibus.util import *
+from pyprofibus.transceiver import *
 
 
 class DpError(Exception):
 	pass
 
-class DpTransceiver(object):
+class DpTransceiver(AbstractTransceiver):
 	def __init__(self, fdlTrans):
+		AbstractTransceiver.__init__(self)
 		self.fdlTrans = fdlTrans
 
 	def poll(self, timeout=0):
@@ -32,7 +34,7 @@ class DpTransceiver(object):
 
 	# Send a DpTelegram.
 	def send(self, telegram):
-		self.fdlTrans.send(telegram.toFdlTelegram(), useFCB=True)
+		self.fdlTrans.send(telegram.toFdlTelegram())
 
 class DpTelegram(object):
 	# Source Service Access Point number

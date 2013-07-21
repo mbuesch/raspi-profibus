@@ -9,20 +9,26 @@
 
 from pyprofibus.phy import *
 from pyprofibus.util import *
+from pyprofibus.transceiver import *
 
 
 class FdlError(Exception):
 	pass
 
-class FdlTransceiver(object):
+class FdlTransceiver(AbstractTransceiver):
 	def __init__(self, phy):
+		AbstractTransceiver.__init__(self)
 		self.phy = phy
 		self.resetFCB()
+		self.enableFCB(False)
 
 	def resetFCB(self):
 		self.__fcb = 1
 		self.__fcv = 0
 		self.__fcbWaitingReply = False
+
+	def enableFCB(self, enabled=True):
+		self.__fcbEnabled = enabled
 
 	def __FCBnext(self):
 		self.__fcb ^= 1
@@ -50,7 +56,7 @@ class FdlTransceiver(object):
 		return (ok, telegram)
 
 	# Send an FdlTelegram.
-	def send(self, telegram, useFCB=False):
+	def send(self, telegram):
 		srd = False
 		if telegram.fc & FdlTelegram.FC_REQ:
 			func = telegram.fc & FdlTelegram.FC_REQFUNC_MASK
@@ -63,7 +69,7 @@ class FdlTransceiver(object):
 				       FdlTelegram.FC_IDENT,
 				       FdlTelegram.FC_LSAP)
 			telegram.fc &= ~(FdlTelegram.FC_FCB | FdlTelegram.FC_FCV)
-			if useFCB:
+			if self.__fcbEnabled:
 				if self.__fcb:
 					telegram.fc |= FdlTelegram.FC_FCB
 				if self.__fcv:
@@ -241,7 +247,7 @@ class FdlTelegram(object):
 				if data[4] != FdlTelegram.calcFCS(data[1:4]):
 					raise FdlError("Checksum mismatch")
 				return FdlTelegram_stat0(
-					da=data[1], sa=data[2], fc=data[3], dae=[], sae=[])
+					da=data[1], sa=data[2], fc=data[3])
 			elif sd == FdlTelegram.SD2:
 				# Variable DU
 				le = data[1]
@@ -280,7 +286,7 @@ class FdlTelegram(object):
 				if sa & FdlTelegram.ADDRESS_EXT:
 					du, sae = FdlTelegram.__duExtractAe(du)
 				return FdlTelegram_stat8(
-					da=da, sa=sa, fc=data[3], du=du)
+					da=da, sa=sa, fc=data[3], dae=dae, sae=sae, du=du)
 			elif sd == FdlTelegram.SD4:
 				# Token telegram
 				if len(data) != 3:

@@ -7,6 +7,8 @@
 # or (at your option) any later version.
 #
 
+import time
+
 
 def intToHex(val):
 	if val is None:
@@ -28,3 +30,33 @@ def intListToHex(valList):
 
 def boolToStr(val):
 	return str(bool(val))
+
+
+class TimeLimited(object):
+	# limit => The time limit, in seconds.
+	#          Negative value = unlimited.
+	def __init__(self, limit):
+		self.__limit = limit
+		self.start()
+
+	# (Re-)start the time.
+	def start(self):
+		self.__startTime = time.time()
+		self.__endTime = self.__startTime + self.__limit
+
+	# Add seconds to the limit
+	def add(self, seconds):
+		self.__limit += seconds
+		self.__endTime = self.__startTime + self.__limit
+
+	# Returns True, if the time limit exceed.
+	def exceed(self):
+		if self.__limit < 0:
+			# Unlimited
+			return False
+		return time.time() >= self.__endTime
+
+	# Sleep for 'seconds'.
+	@classmethod
+	def sleep(cls, seconds=0.001):
+		time.sleep(seconds)
