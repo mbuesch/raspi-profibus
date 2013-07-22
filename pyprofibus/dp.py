@@ -100,9 +100,20 @@ class DpTelegram(object):
 	# Extract the SSAP/DSAP from SAE/DAE
 	@classmethod
 	def extractSAP(cls, ae):
-		if not ae:
-			return None
-		return ae[0] #FIXME
+		if ae:
+			for aeByte in ae:
+				if not (aeByte & 0x40):
+					return aeByte & 0x3F
+		return None
+
+	# Extract the segment address from SAE/DAE
+	@classmethod
+	def extractSegmentAddr(cls, ae):
+		if ae:
+			for aeByte in ae:
+				if aeByte & 0x40:
+					return aeByte & 0x3F
+		return None
 
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
