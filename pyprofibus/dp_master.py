@@ -64,7 +64,15 @@ class DpMaster(object):
 			while not limit.exceed():
 				ok, reply = self.fdlTrans.sendSync(telegram=req,
 								   timeout=0.1)
-				if ok:
+				if ok and reply:
+					if reply.fc & FdlTelegram.FC_REQ:
+						raise DpError("Slave %d replied with "
+							"request bit set" % da)
+					stype = reply.fc & FdlTelegram.FC_STYPE_MASK
+					if stype != FdlTelegram.FC_SLAVE:
+						raise DpError("Device %d is not a slave. "
+							"Detected type: 0x%02X" %\
+							(da, stype))
 					break
 				limit.sleep(0.1)
 			else:
@@ -83,7 +91,8 @@ class DpMaster(object):
 		while not limit.exceed():
 			ok, reply = self.dpTrans.sendSync(telegram=req,
 							  timeout=0.1)
-			if ok:
+			if ok and reply:
+				#TODO checks?
 				break
 		else:
 			raise DpError("Timeout in early SlaveDiag request "
@@ -109,7 +118,7 @@ class DpMaster(object):
 		while not limit.exceed():
 			ok, reply = self.dpTrans.sendSync(telegram=req,
 							  timeout=0.1)
-			if ok:
+			if ok and reply:
 				#TODO additional checks?
 				break
 		else:
@@ -128,6 +137,15 @@ class DpMaster(object):
 
 		# Initialize the registered slaves
 		self.__initializeSlaves()
+
+	# Perform a data exchange with the slave at "da".
+	def dataExchange(self, da, outData):
+		req = DpTelegram_DataExchange_Req(da=da, sa=self.masterAddr,
+						  du=outData)
+		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.1)
+		if ok and reply:
+			return reply.getDU()
+		return None
 
 class DPM1(DpMaster):
 	def __init__(self, phy, masterAddr):

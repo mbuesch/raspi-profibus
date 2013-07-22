@@ -69,10 +69,11 @@ class DpTelegram(object):
 
 	def __repr__(self):
 		return "DpTelegram(da=%s, sa=%s, fc=%s, " \
-			"dsap=%s, ssap=%s)" %\
+			"dsap=%s, ssap=%s) => %s" %\
 			(intToHex(self.da), intToHex(self.sa),
 			 intToHex(self.fc), intToHex(self.dsap),
-			 intToHex(self.ssap))
+			 intToHex(self.ssap),
+			 str(self.getDU()))
 
 	def toFdlTelegram(self):
 		du = self.getDU()
@@ -98,17 +99,21 @@ class DpTelegram(object):
 
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
-		dsap = fdl.dae[0] if fdl.dae else None
+		dsap = fdl.dae[0] if fdl.dae else None #FIXME packets with AE_EXT
 		ssap = fdl.sae[0] if fdl.sae else None
 
+		# Handle telegrams without SSAP/DSAP
 		if not dsap:
 			if ssap:
 				raise DpError("Telegram with SSAP, but without DSAP")
-			return DpTelegram_DataExchange(da=fdl.da, sa=fdl.sa,
-				fc=fdl.fc, du=fdl.du[:])
+			if fdl.fc & FdlTelegram.FC_REQ:
+				return DpTelegram_DataExchange_Req.fromFdlTelegram(fdl)
+			else:
+				return DpTelegram_DataExchange_Con.fromFdlTelegram(fdl)
 		if not ssap:
 			raise DpError("Telegram with DSAP, but without SSAP")
 
+		# Handle telegrams with SSAP/DSAP
 		if dsap == DpTelegram.SSAP_MS0:
 			if ssap == DpTelegram.DSAP_SLAVE_DIAG:
 				return DpTelegram_SlaveDiag_Con.fromFdlTelegram(fdl)
@@ -124,22 +129,45 @@ class DpTelegram(object):
 	def getDU(self):
 		return []
 
-class DpTelegram_DataExchange(DpTelegram):
-	def __init__(self, da, sa, fc=0, du=()): #FIXME FC
+class DpTelegram_DataExchange_Req(DpTelegram):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     du=()):
 		DpTelegram.__init__(self,
 			da=da, sa=sa, fc=fc)
-		self.du = du
+		self.du = list(du[:])
 
 	def appendData(self, data):
 		if not self.du:
-			self.du = [ data ]
-		else:
-			self.du.append(data)
+			self.du = []
+		self.du.append(data)
 
 	def getDU(self):
-		du = DpTelegram.getDU(self)
-		du.extend(self.du)
-		return du
+		return self.du[:]
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		dp = cls(da=fdl.da,
+			 sa=fdl.sa,
+			 fc=fdl.fc,
+			 du=fdl.du if fdl.du else ())
+		return dp
+
+class DpTelegram_DataExchange_Con(DpTelegram_DataExchange_Req):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_DL,
+		     du=()):
+		DpTelegram_DataExchange_Req.__init__(self,
+			da=da, sa=sa, fc=fc, du=du)
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		dp = cls(da=fdl.da,
+			 sa=fdl.sa,
+			 fc=fdl.fc,
+			 du=fdl.du if fdl.du else ())
+		return dp
 
 class DpTelegram_SlaveDiag_Req(DpTelegram):
 	def __init__(self, da, sa,
@@ -197,8 +225,8 @@ class DpTelegram_SlaveDiag_Con(DpTelegram):
 
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
-		dp = cls(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
-			 sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+		dp = cls(da=fdl.da,
+			 sa=fdl.sa,
 			 fc=fdl.fc,
 			 dsap=fdl.dae[0], ssap=fdl.sae[0])
 		try:
@@ -330,8 +358,8 @@ class DpTelegram_ChkCfg_Req(DpTelegram):
 
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
-		dp = cls(da=(fdl.da & FdlTelegram.ADDRESS_MASK),
-			 sa=(fdl.sa & FdlTelegram.ADDRESS_MASK),
+		dp = cls(da=fdl.da,
+			 sa=fdl.sa,
 			 fc=fdl.fc,
 			 dsap=fdl.dae[0], ssap=fdl.sae[0])
 		try:

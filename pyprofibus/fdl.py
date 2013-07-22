@@ -43,9 +43,8 @@ class FdlTransceiver(AbstractTransceiver):
 		if telegram.da is None:
 			# Accept telegrams without DA field.
 			return True
-		da = telegram.da & FdlTelegram.ADDRESS_MASK
 		# Accept the packet, if it's in the RX filter.
-		return da in self.__rxFilter
+		return (telegram.da & FdlTelegram.ADDRESS_MASK) in self.__rxFilter
 
 	def poll(self, timeout=0):
 		ok, telegram = False, None
@@ -164,8 +163,8 @@ class FdlTelegram(object):
 		     haveFCS=False, ed=None):
 		self.sd = sd
 		self.haveLE = haveLE
-		self.da = da
-		self.sa = sa
+		self.da = (da & FdlTelegram.ADDRESS_MASK) if da is not None else None
+		self.sa = (sa & FdlTelegram.ADDRESS_MASK) if sa is not None else None
 		self.fc = fc
 		self.dae = dae
 		self.sae = sae
