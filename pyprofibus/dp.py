@@ -97,10 +97,16 @@ class DpTelegram(object):
 				da=self.da, sa=self.sa, fc=self.fc,
 				dae=dae, sae=sae, du=du)
 
+	# Extract the SSAP/DSAP from SAE/DAE
+	@classmethod
+	def extractSAP(cls, ae):
+		if not ae:
+			return None
+		return ae[0] #FIXME
+
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
-		dsap = fdl.dae[0] if fdl.dae else None #FIXME packets with AE_EXT
-		ssap = fdl.sae[0] if fdl.sae else None
+		dsap, ssap = cls.extractSAP(fdl.dae), cls.extractSAP(fdl.sae)
 
 		# Handle telegrams without SSAP/DSAP
 		if not dsap:
@@ -179,6 +185,10 @@ class DpTelegram_SlaveDiag_Req(DpTelegram):
 		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
 				    dsap=dsap, ssap=ssap)
 
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		pass#TODO
+
 class DpTelegram_SlaveDiag_Con(DpTelegram):
 	# Flags byte 0
 	B0_STANOEX		= 0x01	# Station_Non_Existent
@@ -229,7 +239,8 @@ class DpTelegram_SlaveDiag_Con(DpTelegram):
 		dp = cls(da=fdl.da,
 			 sa=fdl.sa,
 			 fc=fdl.fc,
-			 dsap=fdl.dae[0], ssap=fdl.sae[0])
+			 dsap=cls.extractSAP(fdl.dae),
+			 ssap=cls.extractSAP(fdl.sae))
 		try:
 			dp.b0 = fdl.du[0]
 			dp.b1 = fdl.du[1]
@@ -362,7 +373,8 @@ class DpTelegram_ChkCfg_Req(DpTelegram):
 		dp = cls(da=fdl.da,
 			 sa=fdl.sa,
 			 fc=fdl.fc,
-			 dsap=fdl.dae[0], ssap=fdl.sae[0])
+			 dsap=cls.extractSAP(fdl.dae),
+			 ssap=cls.extractSAP(fdl.sae))
 		try:
 			du = fdl.du
 			while du:
@@ -422,3 +434,60 @@ class DpTelegram_GetCfg_Con(_Cfg_Common):
 		     ssap=DpTelegram.DSAP_GET_CFG):
 		_Cfg_Common.__init__(self, da=da, sa=sa,
 			fc=fc, dsap=dsap, ssap=ssap)
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		pass#TODO
+
+class DpTelegram_GlobalControl(DpTelegram):
+	# Control_Command bits
+	CCMD_CLEAR		= 0x02	# Clear_Data: Clear all outputs
+	CCMD_UNFREEZE		= 0x04	# Unfreeze: Freezing is cancelled
+	CCMD_FREEZE		= 0x08	# Freeze: Inputs are frozen
+	CCMD_UNSYNC		= 0x10	# Unsync: Syncing is cancelled
+	CCMD_SYNC		= 0x20	# Sync: Outputs are synced
+
+	# Group_Select values
+	GSEL_BROADCAST		= 0x00	# All slaves are addressed
+	GSEL_GROUP1		= 0x01	# Group 1 is addressed
+	GSEL_GROUP2		= 0x02	# Group 2 is addressed
+	GSEL_GROUP3		= 0x04	# Group 3 is addressed
+	GSEL_GROUP4		= 0x08	# Group 4 is addressed
+	GSEL_GROUP5		= 0x10	# Group 5 is addressed
+	GSEL_GROUP6		= 0x20	# Group 6 is addressed
+	GSEL_GROUP7		= 0x40	# Group 7 is addressed
+	GSEL_GROUP8		= 0x80	# Group 8 is addressed
+
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SDN_HI |
+		        FdlTelegram.FC_REQ,
+		     dsap=DpTelegram.DSAP_GLOBAL_CONTROL,
+		     ssap=DpTelegram.SSAP_MS0):
+		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
+				    dsap=dsap, ssap=ssap)
+		self.controlCommand = 0		# Control_Command
+		self.groupSelect = 0		# Group_Select
+
+	def __repr__(self):
+		return "DpTelegram_GlobalControl(da=%s, sa=%s, fc=%s, " \
+			"dsap=%s, ssap=%s)" %\
+			(intToHex(self.da), intToHex(self.sa),
+			 intToHex(self.fc),
+			 intToHex(self.dsap), intToHex(self.ssap))
+
+	@classmethod
+	def fromFdlTelegram(cls, fdl):
+		dp = cls(da=fdl.da,
+			 sa=fdl.sa,
+			 fc=fdl.fc,
+			 dsap=cls.extractSAP(fdl.dae),
+			 ssap=cls.extractSAP(fdl.sae))
+		try:
+			dp.controlCommand = fdl.du[0]
+			dp.groupSelect = fdl.du[1]
+		except IndexError:
+			raise DpError("Invalid Global_Control telegram format")
+		return dp
+
+	def getDU(self):
+		return [self.controlCommand, self.groupSelect]
