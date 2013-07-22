@@ -129,11 +129,12 @@ class DpTelegram(object):
 	def getDU(self):
 		return []
 
-class DpTelegram_DataExchange_Req(DpTelegram):
-	def __init__(self, da, sa,
-		     fc=FdlTelegram.FC_SRD_HI |
-		        FdlTelegram.FC_REQ,
-		     du=()):
+	@classmethod
+	def checkType(cls, telegram):
+		return isinstance(telegram, cls)
+
+class _DataExchange_Common(DpTelegram):
+	def __init__(self, da, sa, fc, du):
 		DpTelegram.__init__(self,
 			da=da, sa=sa, fc=fc)
 		self.du = list(du[:])
@@ -154,20 +155,20 @@ class DpTelegram_DataExchange_Req(DpTelegram):
 			 du=fdl.du if fdl.du else ())
 		return dp
 
-class DpTelegram_DataExchange_Con(DpTelegram_DataExchange_Req):
+class DpTelegram_DataExchange_Req(_DataExchange_Common):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     du=()):
+		_DataExchange_Common.__init__(self,
+			da=da, sa=sa, fc=fc, du=du)
+
+class DpTelegram_DataExchange_Con(_DataExchange_Common):
 	def __init__(self, da, sa,
 		     fc=FdlTelegram.FC_DL,
 		     du=()):
-		DpTelegram_DataExchange_Req.__init__(self,
+		_DataExchange_Common.__init__(self,
 			da=da, sa=sa, fc=fc, du=du)
-
-	@classmethod
-	def fromFdlTelegram(cls, fdl):
-		dp = cls(da=fdl.da,
-			 sa=fdl.sa,
-			 fc=fdl.fc,
-			 du=fdl.du if fdl.du else ())
-		return dp
 
 class DpTelegram_SlaveDiag_Req(DpTelegram):
 	def __init__(self, da, sa,
@@ -389,30 +390,35 @@ class DpTelegram_ChkCfg_Req(DpTelegram):
 			du.extend(cfgData.getDU())
 		return du
 
-class DpTelegram_GetCfg_Req(DpTelegram):
-	def __init__(self, da, sa,
-		     fc=FdlTelegram.FC_SRD_HI |
-		        FdlTelegram.FC_REQ,
-		     dsap=DpTelegram.DSAP_GET_CFG,
-		     ssap=DpTelegram.SSAP_MS0):
+class _Cfg_Common(DpTelegram):
+	def __init__(self, da, sa, fc, dsap, ssap):
 		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
 				    dsap=dsap, ssap=ssap)
 
 	def __repr__(self):
-		return "DpTelegram_ChkCfg_Req(da=%s, sa=%s, fc=%s, " \
+		return "_Cfg_Common(da=%s, sa=%s, fc=%s, " \
 			"dsap=%s, ssap=%s)" %\
 			(intToHex(self.da), intToHex(self.sa),
 			 intToHex(self.fc),
 			 intToHex(self.dsap), intToHex(self.ssap))
 
+class DpTelegram_GetCfg_Req(_Cfg_Common):
+	def __init__(self, da, sa,
+		     fc=FdlTelegram.FC_SRD_HI |
+		        FdlTelegram.FC_REQ,
+		     dsap=DpTelegram.DSAP_GET_CFG,
+		     ssap=DpTelegram.SSAP_MS0):
+		_Cfg_Common.__init__(self, da=da, sa=sa, fc=fc,
+			dsap=dsap, ssap=ssap)
+
 	@classmethod
 	def fromFdlTelegram(cls, fdl):
 		pass#TODO
 
-class DpTelegram_GetCfg_Con(DpTelegram_ChkCfg_Req):
+class DpTelegram_GetCfg_Con(_Cfg_Common):
 	def __init__(self, da, sa,
 		     fc=FdlTelegram.FC_DL,
 		     dsap=DpTelegram.SSAP_MS0,
 		     ssap=DpTelegram.DSAP_GET_CFG):
-		DpTelegram_ChkCfg_Req.__init__(self, da=da, sa=sa,
+		_Cfg_Common.__init__(self, da=da, sa=sa,
 			fc=fc, dsap=dsap, ssap=ssap)

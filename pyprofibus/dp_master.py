@@ -144,6 +144,13 @@ class DpMaster(object):
 						  du=outData)
 		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.1)
 		if ok and reply:
+			if not DpTelegram_DataExchange_Con.checkType(reply):
+				raise DpError("Data_Exchange.req reply is not of "
+					"Data_Exchange.con type")
+			resFunc = reply.fc & FdlTelegram.FC_RESFUNC_MASK
+			if resFunc == FdlTelegram.FC_DH or\
+			   resFunc == FdlTelegram.FC_RDH:
+				pass#TODO: Slave_Diag
 			return reply.getDU()
 		return None
 
