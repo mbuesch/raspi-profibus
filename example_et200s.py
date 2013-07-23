@@ -41,7 +41,7 @@ master = DPM1(phy = phy,
 et200s = DpSlaveDesc(identNumber = 0x806A,
 		     slaveAddr = 8)
 
-# Create Cfg_Cfg telegram elements
+# Create Chk_Cfg telegram elements
 for elem in (DpCfgDataElement(0),	# PM-E module
 	     DpCfgDataElement(0x20),	# 2-DO module
 	     DpCfgDataElement(0x20),	# 2-DO module
