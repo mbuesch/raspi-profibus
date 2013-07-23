@@ -86,16 +86,21 @@ class DpSlaveDesc(object):
 		self.setPrmTelegram.wdFact2 = fact2
 
 class DpMaster(object):
-	def __init__(self, dpmClass, phy, masterAddr):
+	def __init__(self, dpmClass, phy, masterAddr, debug=False):
 		self.dpmClass = dpmClass
 		self.phy = phy
 		self.masterAddr = masterAddr
+		self.debug = debug
 
 		self.slaveDescs = {}
 
 		# Create the transceivers
 		self.fdlTrans = FdlTransceiver(self.phy)
 		self.dpTrans = DpTransceiver(self.fdlTrans)
+
+	def __debugMsg(self, msg):
+		if self.debug:
+			print(msg)
 
 	def destroy(self):
 		#TODO
@@ -110,6 +115,8 @@ class DpMaster(object):
 
 	def __initializeSlave(self, slaveDesc):
 		da, sa = slaveDesc.slaveAddr, self.masterAddr
+
+		self.__debugMsg("Initializing slave %d..." % da)
 
 		# Try to request the FDL status
 		try:
@@ -135,11 +142,13 @@ class DpMaster(object):
 		except FdlError as e:
 			raise DpError("FDL error in early FDL status request "
 				"to slave %d: %s" % (da, str(e)))
+		time.sleep(0.1)
 
 		# Enable the FCB bit.
 		self.fdlTrans.enableFCB(True)
 
 		# Send a SlaveDiag request
+		self.__debugMsg("Requesting Slave_Diag from slave %d..." % da)
 		req = DpTelegram_SlaveDiag_Req(da=da, sa=sa)
 		limit = TimeLimited(5.0)
 		while not limit.exceed():
@@ -151,23 +160,29 @@ class DpMaster(object):
 		else:
 			raise DpError("Timeout in early SlaveDiag request "
 				"to slave %d" % da)
+		time.sleep(0.1)
 
 		# Send a SetPrm request
+		self.__debugMsg("Sending Set_Prm to slave %d..." % da)
 		req = slaveDesc.setPrmTelegram
 		req.sa = sa # Assign master address
 		ok, reply = self.dpTrans.sendSync(telegram=req,
 						  timeout=0.3)
 		if not ok:
 			raise DpError("SetPrm request to slave %d failed" % da)
+		time.sleep(0.2)
 
 		# Send a ChkCfg request
+		self.__debugMsg("Sending Ckh_Cfg to slave %d..." % da)
 		req = slaveDesc.chkCfgTelegram
 		req.sa = sa # Assign master address
 		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.3)
 		if not ok:
 			raise DpError("ChkCfg request to slave %d failed" % da)
+		time.sleep(0.2)
 
 		# Send the final SlaveDiag request
+		self.__debugMsg("Requesting Slave_Diag from slave %d..." % da)
 		req = DpTelegram_SlaveDiag_Req(da=da, sa=sa)
 		limit = TimeLimited(1.0)
 		while not limit.exceed():
@@ -179,6 +194,7 @@ class DpMaster(object):
 		else:
 			raise DpError("Timeout in final SlaveDiag request "
 				"to slave %d" % da)
+		time.sleep(0.2)
 
 		slaveDesc.isParameterised = True
 
@@ -251,11 +267,13 @@ class DpMaster(object):
 		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_UNFREEZE)
 
 class DPM1(DpMaster):
-	def __init__(self, phy, masterAddr):
+	def __init__(self, phy, masterAddr, debug=False):
 		DpMaster.__init__(self, dpmClass=1, phy=phy,
-			masterAddr=masterAddr)
+			masterAddr=masterAddr,
+			debug=debug)
 
 class DPM2(DpMaster):
-	def __init__(self, phy, masterAddr):
+	def __init__(self, phy, masterAddr, debug=False):
 		DpMaster.__init__(self, dpmClass=2, phy=phy,
-			masterAddr=masterAddr)
+			masterAddr=masterAddr,
+			debug=debug)

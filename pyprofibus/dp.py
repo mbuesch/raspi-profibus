@@ -307,6 +307,9 @@ class DpTelegram_SetPrm_Req(DpTelegram):
 	def fromFdlTelegram(cls, fdl):
 		pass#TODO
 
+	def addUserPrmData(self, data):
+		self.userPrmData.extend(data)
+
 	def getDU(self):
 		du = [self.stationStatus,
 		      self.wdFact1, self.wdFact2,
