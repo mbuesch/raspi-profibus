@@ -58,9 +58,6 @@ class DpTelegram(object):
 	DSAP_CHK_CFG		= 62
 
 	def __init__(self, da, sa, fc, dsap=None, ssap=None):
-		if da < 0 or da > 127 or\
-		   sa < 0 or sa > 126:
-			raise DpError("Invalid DA or SA")
 		self.da = da
 		self.sa = sa
 		self.fc = fc
@@ -476,8 +473,8 @@ class DpTelegram_GlobalControl(DpTelegram):
 		     ssap=DpTelegram.SSAP_MS0):
 		DpTelegram.__init__(self, da=da, sa=sa, fc=fc,
 				    dsap=dsap, ssap=ssap)
-		self.controlCommand = 0		# Control_Command
-		self.groupSelect = 0		# Group_Select
+		self.controlCommand = 0			# Control_Command
+		self.groupSelect = self.GSEL_BROADCAST	# Group_Select
 
 	def __repr__(self):
 		return "DpTelegram_GlobalControl(da=%s, sa=%s, fc=%s, " \

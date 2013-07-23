@@ -15,21 +15,49 @@ from pyprofibus.util import *
 #TODO GSD parser
 
 class DpSlaveDesc(object):
-	def __init__(self, identNumber, slaveAddr, cfgDataElements):
+	def __init__(self, identNumber, slaveAddr):
 		self.identNumber = identNumber
 		self.slaveAddr = slaveAddr
-		self.cfgDataElements = cfgDataElements
 
-	def setup(self, master):
-		pass#TODO
+		# Prepare a Set_Prm telegram.
+		self.setPrmTelegram = DpTelegram_SetPrm_Req(
+					da = self.slaveAddr,
+					sa = None)
+		self.setPrmTelegram.identNumber = self.identNumber
 
-	def fillSetPrmTelegram(self, setPrm):
-		setPrm.identNumber = self.identNumber
-		pass#TODO
+		# Prepare a Chk_Cfg telegram.
+		self.chkCfgTelegram = DpTelegram_ChkCfg_Req(
+					da = self.slaveAddr,
+					sa = None)
 
-	def fillChkCfgTelegram(self, chkCfg):
-		for elem in self.cfgDataElements:
-			chkCfg.addCfgDataElement(elem)
+		self.isParameterised = False
+
+	def setSyncMode(self, enabled):
+		"""Enable/disable sync-mode.
+		Must be called before parameterisation."""
+
+		assert(not self.isParameterised)
+		if enabled:
+			self.setPrmTelegram.stationStatus |= DpTelegram_SetPrm_Req.STA_SYNC
+		else:
+			self.setPrmTelegram.stationStatus &= ~DpTelegram_SetPrm_Req.STA_SYNC
+
+	def setFreezeMode(self, enabled):
+		"""Enable/disable freeze-mode.
+		Must be called before parameterisation."""
+
+		assert(not self.isParameterised)
+		if enabled:
+			self.setPrmTelegram.stationStatus |= DpTelegram_SetPrm_Req.STA_FREEZE
+		else:
+			self.setPrmTelegram.stationStatus &= ~DpTelegram_SetPrm_Req.STA_FREEZE
+
+	def setGroupMask(self, groupMask):
+		"""Assign the slave to one or more groups.
+		Must be called before parameterisation."""
+
+		assert(not self.isParameterised)
+		self.setPrmTelegram.groupIdent = groupMask
 
 class DpMaster(object):
 	def __init__(self, dpmClass, phy, masterAddr):
@@ -50,11 +78,11 @@ class DpMaster(object):
 			self.phy = None
 
 	def addSlave(self, slaveDesc):
+		"""Register a slave."""
+
 		self.slaveDescs[slaveDesc.slaveAddr] = slaveDesc
 
 	def __initializeSlave(self, slaveDesc):
-		slaveDesc.setup(self)
-
 		da, sa = slaveDesc.slaveAddr, self.masterAddr
 
 		# Try to request the FDL status
@@ -99,15 +127,16 @@ class DpMaster(object):
 				"to slave %d" % da)
 
 		# Send a SetPrm request
-		req = DpTelegram_SetPrm_Req(da=da, sa=sa)
-		slaveDesc.fillSetPrmTelegram(req)
-		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.3)
+		req = slaveDesc.setPrmTelegram
+		req.sa = sa # Assign master address
+		ok, reply = self.dpTrans.sendSync(telegram=req,
+						  timeout=0.3)
 		if not ok:
 			raise DpError("SetPrm request to slave %d failed" % da)
 
 		# Send a ChkCfg request
-		req = DpTelegram_ChkCfg_Req(da=da, sa=sa)
-		slaveDesc.fillChkCfgTelegram(req)
+		req = slaveDesc.chkCfgTelegram
+		req.sa = sa # Assign master address
 		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.3)
 		if not ok:
 			raise DpError("ChkCfg request to slave %d failed" % da)
@@ -125,12 +154,16 @@ class DpMaster(object):
 			raise DpError("Timeout in final SlaveDiag request "
 				"to slave %d" % da)
 
+		slaveDesc.isParameterised = True
+
 	def __initializeSlaves(self):
 		slaveAddrs = self.slaveDescs.keys()
 		for slaveAddr in sorted(slaveAddrs):
 			self.__initializeSlave(self.slaveDescs[slaveAddr])
 
 	def initialize(self):
+		"""Initialize the DPM."""
+
 		# Initialize the RX filter
 		self.fdlTrans.setRXFilter([self.masterAddr,
 					   FdlTelegram.ADDRESS_MCAST])
@@ -138,8 +171,9 @@ class DpMaster(object):
 		# Initialize the registered slaves
 		self.__initializeSlaves()
 
-	# Perform a data exchange with the slave at "da".
 	def dataExchange(self, da, outData):
+		"""Perform a data exchange with the slave at "da"."""
+
 		req = DpTelegram_DataExchange_Req(da=da, sa=self.masterAddr,
 						  du=outData)
 		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.1)
@@ -153,6 +187,42 @@ class DpMaster(object):
 				pass#TODO: Slave_Diag
 			return reply.getDU()
 		return None
+
+	def __syncFreezeHelper(self, groupMask, controlCommand):
+		globCtl = DpTelegram_GlobalControl(da=FdlTelegram.ADDRESS_MCAST,
+						   sa=self.masterAddr)
+		globCtl.controlCommand |= controlCommand
+		globCtl.groupSelect = groupMask & 0xFF
+		ok, reply = self.dpTrans.sendSync(telegram=globCtl, timeout=0.1)
+		if ok:
+			assert(not reply) # SDN
+		else:
+			raise DpError("Failed to send Global_Control to "
+				"group-mask 0x%02X" % groupMask)
+
+	def syncMode(self, groupMask):
+		"""Set SYNC-mode on the specified groupMask.
+		If groupMask is 0, all slaves are addressed."""
+
+		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_SYNC)
+
+	def syncModeCancel(self, groupMask):
+		"""Cancel SYNC-mode on the specified groupMask.
+		If groupMask is 0, all slaves are addressed."""
+
+		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_UNSYNC)
+
+	def freezeMode(self, groupMask):
+		"""Set FREEZE-mode on the specified groupMask.
+		If groupMask is 0, all slaves are addressed."""
+
+		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_FREEZE)
+
+	def freezeModeCancel(self, groupMask):
+		"""Cancel FREEZE-mode on the specified groupMask.
+		If groupMask is 0, all slaves are addressed."""
+
+		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_UNFREEZE)
 
 class DPM1(DpMaster):
 	def __init__(self, phy, masterAddr):
