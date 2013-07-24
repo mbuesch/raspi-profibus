@@ -7,25 +7,12 @@
 # or (at your option) any later version.
 #
 
-import sys
 import time
 
 from pyprofibus.util import *
 
-try:
-	from spidev import SpiDev
-except ImportError:
-	print("Failed to import 'spidev' module.")
-	print("Get 'spidev' from git://git.bues.ch/py-spidev.git (branch 'py3')")
-	sys.exit(1)
-try:
-	import RPi.GPIO as GPIO
-except ImportError:
-	print("Failed to import 'RPi.GPIO' module.")
-	sys.exit(1)
-except RuntimeError as e:
-	print(str(e))
-	sys.exit(1)
+from spidev import SpiDev
+import RPi.GPIO as GPIO
 
 
 class PhyError(Exception):
