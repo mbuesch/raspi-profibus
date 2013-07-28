@@ -128,13 +128,17 @@ class CpPhy(object):
 		self.debug = debug
 
 		try:
-			# Initialize GPIOs
-			GPIO.setmode(GPIO.BCM) # Use Broadcom numbers
-			GPIO.setwarnings(False)
-			GPIO.setup(self.GPIO_RESET, GPIO.OUT, initial=GPIO.LOW)
-			GPIO.setup(self.GPIO_IRQ, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
-			GPIO.add_event_detect(self.GPIO_IRQ, GPIO.RISING)
-			time.sleep(0.05)
+			try:
+				# Initialize GPIOs
+				GPIO.setmode(GPIO.BCM) # Use Broadcom numbers
+				GPIO.setwarnings(False)
+				GPIO.setup(self.GPIO_RESET, GPIO.OUT, initial=GPIO.LOW)
+				GPIO.setup(self.GPIO_IRQ, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+				GPIO.add_event_detect(self.GPIO_IRQ, GPIO.RISING)
+				time.sleep(0.05)
+			except RuntimeError as e:
+				raise PhyError("Failed to initialize GPIOs: %s" %\
+					str(e))
 
 			# Initialize SPI
 			try:
