@@ -17,9 +17,15 @@ import math
 #TODO GSD parser
 
 class DpSlaveDesc(object):
-	def __init__(self, identNumber, slaveAddr):
+	def __init__(self,
+		     identNumber,
+		     slaveAddr,
+		     inputAddressRangeSize,
+		     outputAddressRangeSize):
 		self.identNumber = identNumber
 		self.slaveAddr = slaveAddr
+		self.inputAddressRangeSize = inputAddressRangeSize
+		self.outputAddressRangeSize = outputAddressRangeSize
 
 		# Prepare a Set_Prm telegram.
 		self.setPrmTelegram = DpTelegram_SetPrm_Req(
@@ -33,6 +39,10 @@ class DpSlaveDesc(object):
 					sa = None)
 
 		self.isParameterised = False
+
+	def __repr__(self):
+		return "DPSlaveDesc(identNumber=%s, slaveAddr=%d)" %\
+			(intToHex(self.identNumber), self.slaveAddr)
 
 	def setSyncMode(self, enabled):
 		"""Enable/disable sync-mode.
@@ -112,6 +122,12 @@ class DpMaster(object):
 		"""Register a slave."""
 
 		self.slaveDescs[slaveDesc.slaveAddr] = slaveDesc
+
+	def getSlaveList(self):
+		"""Get a list of registered DpSlaveDescs, sorted by address."""
+
+		return [ desc for addr, desc in sorted(self.slaveDescs.items(),
+						       key = lambda x: x[0]) ]
 
 	def __initializeSlave(self, slaveDesc):
 		da, sa = slaveDesc.slaveAddr, self.masterAddr
