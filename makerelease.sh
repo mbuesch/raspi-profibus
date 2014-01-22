@@ -21,7 +21,7 @@ hook_get_version()
 	version="$maj.$min"
 }
 
-hook_pre_tarball()
+hook_pre_archives()
 {
 	ps2pdf -sPAPERSIZE=a4 -dOptimize=true -dEmbedAllFonts=true \
 		"$2"/schematics/cp-phy.ps "$2"/schematics/cp-phy.pdf
