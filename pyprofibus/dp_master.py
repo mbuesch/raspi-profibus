@@ -91,7 +91,7 @@ class DpSlaveDesc(object):
 			fact1 /= 2
 			if fact2 > 255:
 				raise DpError("Watchdog timeout %d is too big" % timeoutMS)
-		fact1 = min(255, math.ceil(fact1))
+		fact1 = min(255, int(math.ceil(fact1)))
 		self.setPrmTelegram.wdFact1 = fact1
 		self.setPrmTelegram.wdFact2 = fact2
 
