@@ -22,32 +22,32 @@
 #   ^--------------^----------^----------^----------^----------^
 #
 
-from pyprofibus.dp_master import *
+import pyprofibus
 
 
 # Enable verbose debug messages?
 debug = True
 
 # Create a PHY (layer 1) interface object
-phy = CpPhy(debug=debug)
+phy = pyprofibus.CpPhy(debug=debug)
 
 # Create a DP class 1 master with DP address 1
-master = DPM1(phy = phy,
-	      masterAddr = 1,
-	      debug = debug)
+master = pyprofibus.DPM1(phy = phy,
+			 masterAddr = 1,
+			 debug = debug)
 
 # Create a slave description for an ET-200S.
 # The ET-200S has got the DP address 8 set via DIP-switches.
-et200s = DpSlaveDesc(identNumber = 0x806A,
-		     slaveAddr = 8,
-		     inputAddressRangeSize = 1,
-		     outputAddressRangeSize = 2)
+et200s = pyprofibus.DpSlaveDesc(identNumber = 0x806A,
+				slaveAddr = 8,
+				inputAddressRangeSize = 1,
+				outputAddressRangeSize = 2)
 
 # Create Chk_Cfg telegram elements
-for elem in (DpCfgDataElement(0),	# PM-E module
-	     DpCfgDataElement(0x20),	# 2-DO module
-	     DpCfgDataElement(0x20),	# 2-DO module
-	     DpCfgDataElement(0x10)):	# 4-DI module
+for elem in (pyprofibus.DpCfgDataElement(0),		# PM-E module
+	     pyprofibus.DpCfgDataElement(0x20),		# 2-DO module
+	     pyprofibus.DpCfgDataElement(0x20),		# 2-DO module
+	     pyprofibus.DpCfgDataElement(0x10)):	# 4-DI module
 	et200s.chkCfgTelegram.addCfgDataElement(elem)
 
 # Set User_Prm_Data
