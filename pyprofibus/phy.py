@@ -1,7 +1,7 @@
 #
 # PROFIBUS DP - Communication Processor PHY access library
 #
-# Copyright (c) 2013 Michael Buesch <m@bues.ch>
+# Copyright (c) 2013-2014 Michael Buesch <m@bues.ch>
 #
 # Licensed under the terms of the GNU General Public License version 2,
 # or (at your option) any later version.
@@ -15,7 +15,7 @@ from spidev import SpiDev
 import RPi.GPIO as GPIO
 
 
-class PhyError(Exception):
+class PhyError(ProfibusError):
 	pass
 
 class CpPhyMessage(object):

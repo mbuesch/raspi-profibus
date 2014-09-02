@@ -1,7 +1,7 @@
 #
 # PROFIBUS DP - Layer 7
 #
-# Copyright (c) 2013 Michael Buesch <m@bues.ch>
+# Copyright (c) 2013-2014 Michael Buesch <m@bues.ch>
 #
 # Licensed under the terms of the GNU General Public License version 2,
 # or (at your option) any later version.
@@ -12,7 +12,7 @@ from pyprofibus.util import *
 from pyprofibus.transceiver import *
 
 
-class DpError(Exception):
+class DpError(ProfibusError):
 	pass
 
 class DpTransceiver(AbstractTransceiver):

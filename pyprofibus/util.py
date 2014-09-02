@@ -10,6 +10,9 @@
 import time
 
 
+class ProfibusError(Exception):
+	pass
+
 def intToHex(val):
 	if val is None:
 		return "None"
