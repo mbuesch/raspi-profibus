@@ -8,11 +8,18 @@
 #
 
 import time
+import sys
 
 from pyprofibus.util import *
 
-from spidev import SpiDev
-import RPi.GPIO as GPIO
+try:
+	from spidev import SpiDev
+except ImportError as e:
+	sys.stderr.write("Failed to import module SpiDev:\n%s\n" % str(e))
+try:
+	import RPi.GPIO as GPIO
+except ImportError as e:
+	sys.stderr.write("Failed to import module RPi.GPIO:\n%s\n" % str(e))
 
 
 class PhyError(ProfibusError):
