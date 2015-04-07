@@ -85,9 +85,9 @@ class CpPhyMessage(object):
 			fcname = self.fc2name[self.fc]
 		except KeyError:
 			fcname = "0x%02X" % self.fc
-		return "CpPhyMessage(fc=%s, payload=[%s])" %\
+		return "CpPhyMessage(fc=%-12s, payload=[%s])" %\
 			(fcname,
-			 ", ".join("0x%02X" % d for d in self.payload))
+			 ",".join("%02X" % d for d in self.payload))
 
 class CpPhy(object):
 	# Profibus baud-rates
@@ -209,12 +209,12 @@ class CpPhy(object):
 		message = CpPhyMessage(0)
 		message.setRawData(reply)
 		if self.debug:
-			print("[PHY] received message:", message)
+			print("[PHY] recv msg:", message)
 		return message
 
 	def __sendMessage(self, message):
 		if self.debug:
-			print("[PHY] sending message:", message)
+			print("[PHY] send msg:", message)
 		self.spi.writebytes(message.getRawData())
 
 	def sendReset(self):
@@ -226,7 +226,7 @@ class CpPhy(object):
 	def profibusSetPhyConfig(self, baudrate=19200,
 				 rxTimeoutMs=100,
 				 bitErrorChecks=True,
-				 rtsMode=PB_PHY_RTS_ALWAYS_LO):
+				 rtsMode=PB_PHY_RTS_SENDING_HI):
 		try:
 			baudID = self.baud2id[baudrate]
 		except KeyError:

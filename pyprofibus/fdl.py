@@ -28,16 +28,16 @@ class FdlTransceiver(AbstractTransceiver):
 
 	def resetFCB(self):
 		self.__fcb = 1
-		self.__fcv = 0
+		self.__fcv = 0	# alternation disabled
 		self.__fcbWaitingReply = False
 
 	def enableFCB(self, enabled=True):
 		self.__fcbEnabled = enabled
 
-	def __FCBnext(self):
-		self.__fcb ^= 1
-		self.__fcv = 1
-		self.__fcbWaitingReply = False
+	def __FCBnext(self,wait=False):
+		self.__fcb ^= 1	# alternate next bit
+		self.__fcv = 1	# alternation enabled
+		self.__fcbWaitingReply = wait
 
 	def __checkRXFilter(self, telegram):
 		if telegram.da is None:
@@ -60,7 +60,8 @@ class FdlTransceiver(AbstractTransceiver):
 				ok = True
 			elif reply.fc == CpPhyMessage.RPI_PACK_NACK:
 				ok = False
-				self.resetFCB()
+				#self.resetFCB()
+				self.__FCBnext(wait=True)
 			else:
 				raise FdlError("Received CpPhyMessage with "
 					"unknown type (0x%02X)" % reply.fc)
@@ -68,7 +69,7 @@ class FdlTransceiver(AbstractTransceiver):
 
 	# Send an FdlTelegram.
 	def send(self, telegram):
-		srd = False
+		srd = False	# send & request data
 		if telegram.fc & FdlTelegram.FC_REQ:
 			func = telegram.fc & FdlTelegram.FC_REQFUNC_MASK
 			srd = func in (FdlTelegram.FC_SRD_LO,
@@ -137,7 +138,7 @@ class FdlTelegram(object):
 
 	# Frame Control Frame Count Bit (FC_REQ set)
 	FC_FCV		= 0x10	# Frame Count Bit valid
-	FC_FCB		= 0x20	# Frame Count Bit
+	FC_FCB		= 0x20	# Frame Count Bit (alternating)
 
 	# Response Frame Control function codes (FC_REQ clear)
 	FC_RESFUNC_MASK	= 0x0F
@@ -356,6 +357,13 @@ class FdlTelegram_FdlStat_Req(FdlTelegram_stat0):
 		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
 			fc=FdlTelegram.FC_REQ |\
 			   FdlTelegram.FC_FDL_STAT)
+
+
+class FdlTelegram_SrdHi_Req(FdlTelegram_stat0):
+	def __init__(self, da, sa):
+		FdlTelegram_stat0.__init__(self, da=da, sa=sa,
+			fc=FdlTelegram.FC_REQ |\
+			   FdlTelegram.FC_SRD_HI)
 
 class FdlTelegram_Ident_Req(FdlTelegram_stat0):
 	def __init__(self, da, sa):

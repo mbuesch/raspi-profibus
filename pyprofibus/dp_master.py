@@ -134,9 +134,13 @@ class DpMaster(object):
 
 		self.__debugMsg("Initializing slave %d..." % da)
 
+		# Enable the FCB bit.
+		self.fdlTrans.enableFCB(True)
+
 		# Try to request the FDL status
 		try:
-			req = FdlTelegram_FdlStat_Req(da=da, sa=sa)
+			#req = FdlTelegram_FdlStat_Req(da=da, sa=sa)
+			req = FdlTelegram_SrdHi_Req(da=da, sa=sa)
 			limit = TimeLimited(5.0)
 			while not limit.exceed():
 				ok, reply = self.fdlTrans.sendSync(telegram=req,
@@ -186,7 +190,7 @@ class DpMaster(object):
 						  timeout=0.3)
 		if not ok:
 			raise DpError("SetPrm request to slave %d failed" % da)
-		time.sleep(0.2)
+		time.sleep(0.05)
 
 		# Send a ChkCfg request
 		self.__debugMsg("Sending Ckh_Cfg to slave %d..." % da)
@@ -195,29 +199,77 @@ class DpMaster(object):
 		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.3)
 		if not ok:
 			raise DpError("ChkCfg request to slave %d failed" % da)
-		time.sleep(0.2)
+		time.sleep(0.05)
 
-		# Send the final SlaveDiag request
+		# Send the final SlaveDiag request to check readyness for data exchange
 		self.__debugMsg("Requesting Slave_Diag from slave %d..." % da)
 		req = DpTelegram_SlaveDiag_Req(da=da, sa=sa)
 		limit = TimeLimited(1.0)
+		ready = False
 		while not limit.exceed():
 			ok, reply = self.dpTrans.sendSync(telegram=req,
 							  timeout=0.1)
 			if ok and reply:
 				#TODO additional checks?
-				break
+				if reply.HasExtDiag():
+					#TODO turn on red DIAG-LED
+					pass
+				if reply.IsReadyDataEx():
+					ready = True
+					break
+				elif reply.NeedsNewPrmCfg():
+					#TODO restart proceure
+					pass					
 		else:
 			raise DpError("Timeout in final SlaveDiag request "
 				"to slave %d" % da)
-		time.sleep(0.2)
+		time.sleep(0.05)
 
 		slaveDesc.isParameterised = True
+		return ready
+		
 
 	def __initializeSlaves(self):
+		all_ready = True
 		slaveAddrs = self.slaveDescs.keys()
 		for slaveAddr in sorted(slaveAddrs):
-			self.__initializeSlave(self.slaveDescs[slaveAddr])
+			all_ready = all_ready and self.__initializeSlave(self.slaveDescs[slaveAddr])
+		return all_ready
+
+	def __DiagSlave(self, slaveDesc):
+		da, sa = slaveDesc.slaveAddr, self.masterAddr
+
+		# Send the final SlaveDiag request to check readyness for data exchange
+		self.__debugMsg("Requesting Slave_Diag from slave %d..." % da)
+		req = DpTelegram_SlaveDiag_Req(da=da, sa=sa)
+		limit = TimeLimited(1.0)
+		ready = False
+		while not limit.exceed():
+			ok, reply = self.dpTrans.sendSync(telegram=req,
+							  timeout=0.1)
+			if ok and reply:
+				#TODO additional checks?
+				if reply.HasExtDiag():
+					self.__debugMsg("Slave(%d) HasExtDiag" % da)
+					pass
+				if reply.IsReadyDataEx():
+					ready = True
+					break
+				elif reply.NeedsNewPrmCfg():
+					self.__debugMsg("Slave(%d) NeedsNewPrmCfg" % da)
+					pass					
+		else:
+			raise DpError("Timeout in final SlaveDiag request "
+				"to slave %d" % da)
+		time.sleep(0.05)
+		return ready
+
+	def DiagSlaves(self):
+		all_ready = True
+		slaveAddrs = self.slaveDescs.keys()
+		for slaveAddr in sorted(slaveAddrs):
+			all_ready = all_ready and self.__DiagSlave(self.slaveDescs[slaveAddr])
+		return all_ready
 
 	def initialize(self):
 		"""Initialize the DPM."""
@@ -227,7 +279,9 @@ class DpMaster(object):
 					   FdlTelegram.ADDRESS_MCAST])
 
 		# Initialize the registered slaves
-		self.__initializeSlaves()
+		if self.__initializeSlaves():
+			return True		# successfull & ready for DataEx
+		return False
 
 	def dataExchange(self, da, outData):
 		"""Perform a data exchange with the slave at "da"."""
@@ -243,6 +297,8 @@ class DpMaster(object):
 			if resFunc == FdlTelegram.FC_DH or\
 			   resFunc == FdlTelegram.FC_RDH:
 				pass#TODO: Slave_Diag
+			if resFunc == FdlTelegram.FC_RS:	# service not active on slave?
+				raise DpError("Service not active on slave %d" % da)
 			return reply.getDU()
 		return None
 

@@ -38,26 +38,27 @@ master = pyprofibus.DPM1(phy = phy,
 
 # Create a slave description for an ET-200S.
 # The ET-200S has got the DP address 8 set via DIP-switches.
-et200s = pyprofibus.DpSlaveDesc(identNumber = 0x806A,
-				slaveAddr = 8,
-				inputAddressRangeSize = 1,
-				outputAddressRangeSize = 2)
+et200s = pyprofibus.DpSlaveDesc(identNumber = 0x817A,
+				slaveAddr = 3,
+				inputAddressRangeSize = 22,
+				outputAddressRangeSize = 6)
 
 # Create Chk_Cfg telegram elements
-for elem in (pyprofibus.DpCfgDataElement(0),		# PM-E module
-	     pyprofibus.DpCfgDataElement(0x20),		# 2-DO module
-	     pyprofibus.DpCfgDataElement(0x20),		# 2-DO module
-	     pyprofibus.DpCfgDataElement(0x10)):	# 4-DI module
-	et200s.chkCfgTelegram.addCfgDataElement(elem)
+for elem in (\
+				pyprofibus.DpCfgDataElement(0xC1),		# 1 In-Byte & 1 Out-Byte follows
+				pyprofibus.DpCfgDataElement(0x06-1),	# DI 22 Bytes
+				pyprofibus.DpCfgDataElement(0x16-1),	# DO  6 Bytes
+				pyprofibus.DpCfgDataElement(0x00)):		# 
+			et200s.chkCfgTelegram.addCfgDataElement(elem)
 
 # Set User_Prm_Data
-et200s.setPrmTelegram.addUserPrmData([0x11 | 0x40])
+et200s.setPrmTelegram.addUserPrmData([0x03,0x02,0x07,0x00,0x00])
 
 # Set various standard parameters
-et200s.setSyncMode(True)		# Sync-mode supported
-et200s.setFreezeMode(True)		# Freeze-mode supported
+et200s.setSyncMode(False)		# Sync-mode not supported
+et200s.setFreezeMode(False)		# Freeze-mode not supported
 et200s.setGroupMask(1)			# Group-ident 1
-et200s.setWatchdog(5000)		# Watchdog: 5 seconds
+et200s.setWatchdog(1000)		# Watchdog: 1 second
 
 # Register the ET-200S slave at the DPM
 master.addSlave(et200s)
@@ -70,12 +71,13 @@ try:
 	# Cyclically run Data_Exchange.
 	# 4 input bits from the 4-DI module are copied to
 	# the two 2-DO modules.
-	inData = 0
+	inData = [0]*et200s.inputAddressRangeSize
+	outData = [0]*et200s.outputAddressRangeSize
 	while 1:
-		outData = [inData & 3, (inData >> 2) & 3]
+		#outData = [inData & 3, (inData >> 2) & 3]
 		inData = master.dataExchange(da = et200s.slaveAddr,
 					     outData = outData)
-		inData = inData[0] if inData else 0
+		#inData = inData[0] if inData else 0
 except:
 	print("Terminating.")
 	master.destroy()
