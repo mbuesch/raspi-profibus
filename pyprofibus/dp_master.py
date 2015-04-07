@@ -26,6 +26,9 @@ class DpSlaveDesc(object):
 		self.slaveAddr = slaveAddr
 		self.inputAddressRangeSize = inputAddressRangeSize
 		self.outputAddressRangeSize = outputAddressRangeSize
+		
+		# Context for FC-Bit toggeling
+		self.fcb = FdlFCB(False)	# default: disabled
 
 		# Prepare a Set_Prm telegram.
 		self.setPrmTelegram = DpTelegram_SetPrm_Req(
@@ -135,7 +138,7 @@ class DpMaster(object):
 		self.__debugMsg("Initializing slave %d..." % da)
 
 		# Enable the FCB bit.
-		self.fdlTrans.enableFCB(True)
+		slaveDesc.fcb.enableFCB(True)
 
 		# Try to request the FDL status
 		try:
@@ -143,8 +146,9 @@ class DpMaster(object):
 			req = FdlTelegram_SrdHi_Req(da=da, sa=sa)
 			limit = TimeLimited(5.0)
 			while not limit.exceed():
-				ok, reply = self.fdlTrans.sendSync(telegram=req,
-								   timeout=0.1)
+				#self.fdlTrans.send( slaveDesc.fcb, telegram=req )
+				#ok, reply = self.fdlTrans.poll( slaveDesc.fcb, timeout=0.1 )
+				ok, reply = self.fdlTrans.sendSync(	slaveDesc.fcb, telegram=req, timeout=0.1)
 				if ok and reply:
 					if reply.fc & FdlTelegram.FC_REQ:
 						raise DpError("Slave %d replied with "
@@ -165,15 +169,15 @@ class DpMaster(object):
 		time.sleep(0.1)
 
 		# Enable the FCB bit.
-		self.fdlTrans.enableFCB(True)
+		slaveDesc.fcb.enableFCB(True)
 
 		# Send a SlaveDiag request
 		self.__debugMsg("Requesting Slave_Diag from slave %d..." % da)
 		req = DpTelegram_SlaveDiag_Req(da=da, sa=sa)
 		limit = TimeLimited(5.0)
 		while not limit.exceed():
-			ok, reply = self.dpTrans.sendSync(telegram=req,
-							  timeout=0.1)
+			ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.1)
 			if ok and reply:
 				#TODO checks?
 				break
@@ -186,8 +190,8 @@ class DpMaster(object):
 		self.__debugMsg("Sending Set_Prm to slave %d..." % da)
 		req = slaveDesc.setPrmTelegram
 		req.sa = sa # Assign master address
-		ok, reply = self.dpTrans.sendSync(telegram=req,
-						  timeout=0.3)
+		ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.3)
 		if not ok:
 			raise DpError("SetPrm request to slave %d failed" % da)
 		time.sleep(0.05)
@@ -196,7 +200,8 @@ class DpMaster(object):
 		self.__debugMsg("Sending Ckh_Cfg to slave %d..." % da)
 		req = slaveDesc.chkCfgTelegram
 		req.sa = sa # Assign master address
-		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.3)
+		ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.3)
 		if not ok:
 			raise DpError("ChkCfg request to slave %d failed" % da)
 		time.sleep(0.05)
@@ -207,8 +212,8 @@ class DpMaster(object):
 		limit = TimeLimited(1.0)
 		ready = False
 		while not limit.exceed():
-			ok, reply = self.dpTrans.sendSync(telegram=req,
-							  timeout=0.1)
+			ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.1)
 			if ok and reply:
 				#TODO additional checks?
 				if reply.HasExtDiag():
@@ -245,8 +250,8 @@ class DpMaster(object):
 		limit = TimeLimited(1.0)
 		ready = False
 		while not limit.exceed():
-			ok, reply = self.dpTrans.sendSync(telegram=req,
-							  timeout=0.1)
+			ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.1)
 			if ok and reply:
 				#TODO additional checks?
 				if reply.HasExtDiag():
@@ -285,10 +290,11 @@ class DpMaster(object):
 
 	def dataExchange(self, da, outData):
 		"""Perform a data exchange with the slave at "da"."""
-
+		slaveDesc = self.slaveDescs[da]
 		req = DpTelegram_DataExchange_Req(da=da, sa=self.masterAddr,
 						  du=outData)
-		ok, reply = self.dpTrans.sendSync(telegram=req, timeout=0.1)
+		ok, reply = self.dpTrans.sendSync(\
+				slaveDesc.fcb, telegram=req, timeout=0.1)
 		if ok and reply:
 			if not DpTelegram_DataExchange_Con.checkType(reply):
 				raise DpError("Data_Exchange.req reply is not of "
@@ -302,41 +308,42 @@ class DpMaster(object):
 			return reply.getDU()
 		return None
 
-	def __syncFreezeHelper(self, groupMask, controlCommand):
+	def __syncFreezeHelper(self, fcb, groupMask, controlCommand):
 		globCtl = DpTelegram_GlobalControl(da=FdlTelegram.ADDRESS_MCAST,
 						   sa=self.masterAddr)
 		globCtl.controlCommand |= controlCommand
 		globCtl.groupSelect = groupMask & 0xFF
-		ok, reply = self.dpTrans.sendSync(telegram=globCtl, timeout=0.1)
+		ok, reply = self.dpTrans.sendSync(\
+			fcb, telegram=globCtl, timeout=0.1)
 		if ok:
 			assert(not reply) # SDN
 		else:
 			raise DpError("Failed to send Global_Control to "
 				"group-mask 0x%02X" % groupMask)
 
-	def syncMode(self, groupMask):
+	def syncMode(self, fcb, groupMask):
 		"""Set SYNC-mode on the specified groupMask.
 		If groupMask is 0, all slaves are addressed."""
 
-		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_SYNC)
+		self.__syncFreezeHelper(fcb, groupMask, DpTelegram_GlobalControl.CCMD_SYNC)
 
-	def syncModeCancel(self, groupMask):
+	def syncModeCancel(self, fcb, groupMask):
 		"""Cancel SYNC-mode on the specified groupMask.
 		If groupMask is 0, all slaves are addressed."""
 
-		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_UNSYNC)
+		self.__syncFreezeHelper(fcb, groupMask, DpTelegram_GlobalControl.CCMD_UNSYNC)
 
-	def freezeMode(self, groupMask):
+	def freezeMode(self, fcb, groupMask):
 		"""Set FREEZE-mode on the specified groupMask.
 		If groupMask is 0, all slaves are addressed."""
 
-		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_FREEZE)
+		self.__syncFreezeHelper(fcb, groupMask, DpTelegram_GlobalControl.CCMD_FREEZE)
 
-	def freezeModeCancel(self, groupMask):
+	def freezeModeCancel(self, fcb, groupMask):
 		"""Cancel FREEZE-mode on the specified groupMask.
 		If groupMask is 0, all slaves are addressed."""
 
-		self.__syncFreezeHelper(groupMask, DpTelegram_GlobalControl.CCMD_UNFREEZE)
+		self.__syncFreezeHelper(fcb, groupMask, DpTelegram_GlobalControl.CCMD_UNFREEZE)
 
 class DPM1(DpMaster):
 	def __init__(self, phy, masterAddr, debug=False):

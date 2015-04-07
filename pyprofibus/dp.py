@@ -20,9 +20,9 @@ class DpTransceiver(AbstractTransceiver):
 		AbstractTransceiver.__init__(self)
 		self.fdlTrans = fdlTrans
 
-	def poll(self, timeout=0):
+	def poll(self, fcb, timeout=0):
 		dpTelegram = None
-		ok, fdlTelegram = self.fdlTrans.poll(timeout)
+		ok, fdlTelegram = self.fdlTrans.poll(fcb,timeout)
 		if ok and fdlTelegram:
 			if fdlTelegram.sd in (FdlTelegram.SD1,
 					      FdlTelegram.SD2,
@@ -33,8 +33,8 @@ class DpTransceiver(AbstractTransceiver):
 		return (ok, dpTelegram)
 
 	# Send a DpTelegram.
-	def send(self, telegram):
-		self.fdlTrans.send(telegram.toFdlTelegram())
+	def send(self, fcb, telegram):
+		self.fdlTrans.send(fcb, telegram.toFdlTelegram())
 
 class DpTelegram(object):
 	# Source Service Access Point number

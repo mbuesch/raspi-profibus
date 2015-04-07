@@ -9,6 +9,6 @@
 
 
 class AbstractTransceiver(object):
-	def sendSync(self, telegram, timeout):
-		self.send(telegram)
-		return self.poll(timeout)
+	def sendSync(self, fcb, telegram, timeout):
+		self.send(fcb, telegram)
+		return self.poll(fcb, timeout)
