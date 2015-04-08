@@ -29,7 +29,7 @@ import pyprofibus
 debug = True
 
 # Create a PHY (layer 1) interface object
-phy = pyprofibus.CpPhy(debug=debug)
+phy = pyprofibus.CpPhy(debug=False)
 
 # Create a DP class 1 master with DP address 1
 master = pyprofibus.DPM1(phy = phy,
@@ -66,7 +66,7 @@ master.addSlave(et200s)
 try:
 	# Initialize the DPM and all registered slaves
 	master.initialize()
-	print("Initialization finished. Running Data_Exchange...")
+	#print("Initialization finished. Running Data_Exchange...")
 
 	# Cyclically run Data_Exchange.
 	# 4 input bits from the 4-DI module are copied to
@@ -74,9 +74,11 @@ try:
 	inData = [0]*et200s.inputAddressRangeSize
 	outData = [0]*et200s.outputAddressRangeSize
 	while 1:
+		master.runAllSlaves()
+		if master.slaveDescs[3].state.isValid():
+			inData = master.slaveDescs[3].SetNewDo_GetDi( outData )
+			#print( "indata: "+",".join("%02X" % d for d in inData) )
 		#outData = [inData & 3, (inData >> 2) & 3]
-		inData = master.dataExchange(da = et200s.slaveAddr,
-					     outData = outData)
 		#inData = inData[0] if inData else 0
 except:
 	print("Terminating.")
