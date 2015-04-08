@@ -20,7 +20,12 @@ class FdlFCB():	# context, hold by slave instance
 	def __init__(self,Enable=False):
 		self.resetFCB()
 		self.enableFCB(Enable==True)
-
+		
+	def __repr__(self):
+		return "FdlFCB(en=%s, fcb=%s, fcv=%s, wait=%s)" %\
+			(str(self.__fcbEnabled),str(self.__fcb),\
+			str(self.__fcv),str(self.__fcbWaitingReply))
+			
 	def resetFCB(self):
 		self.__fcb = 1
 		self.__fcv = 0	# alternation disabled
@@ -38,10 +43,10 @@ class FdlFCB():	# context, hold by slave instance
 		return (self.__fcbEnabled == True)
 		
 	def BitIsOn(self):
-		return (self.__fcb <> 0)
+		return (self.__fcb != 0)
 		
 	def BitIsValid(self):
-		return (self.__fcv <> 0)
+		return (self.__fcv != 0)
 
 	def IsWaitingReply(self):
 		return (self.__fcbWaitingReply == True)

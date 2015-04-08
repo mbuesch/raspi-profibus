@@ -267,20 +267,20 @@ class DpTelegram_SlaveDiag_Con(DpTelegram):
 
 	def NeedsNewPrmCfg(self):
 		return (\
-			(self.b0 & self.B0_CFGFLT) <> 0 or\
-			(self.b0 & self.B0_PRMFLT) <> 0 or\
-			(self.b1 & self.B1_PRMREQ) <> 0 )
+			(self.b0 & self.B0_CFGFLT) != 0 or\
+			(self.b0 & self.B0_PRMFLT) != 0 or\
+			(self.b1 & self.B1_PRMREQ) != 0 )
 
 	def HasExtDiag(self):
-		return (self.b0 & self.B0_EXTDIAG) <> 0
+		return (self.b0 & self.B0_EXTDIAG) != 0
 
 	def IsReadyDataEx(self):
 		return not ( (self.b0 & (\
 				self.B0_STANOEX |\
 				self.B0_STANORDY |\
 				self.B0_CFGFLT |\
-				self.B0_PRMFLT ))<>0 or (self.b1 & (\
-				self.B1_PRMREQ ))<>0 )
+				self.B0_PRMFLT ))!=0 or (self.b1 & (\
+				self.B1_PRMREQ ))!=0 )
 
 class DpTelegram_SetPrm_Req(DpTelegram):
 	# Station status
